@@ -50,14 +50,6 @@
                 totalWorkforce: 1743,
                 unemployed: 140
             },
-            locations: [
-                { name: "Kantor Desa Jeringo", category: "Pemerintahan", lat: -8.53686, lng: 116.13239, icon: "fa-solid fa-landmark", color: "blue" },
-                { name: "SDN 1 Jeringo", category: "Pendidikan", lat: -8.5352, lng: 116.1315, icon: "fa-solid fa-school", color: "orange" },
-                { name: "Puskesmas Pembantu", category: "Kesehatan", lat: -8.5380, lng: 116.1340, icon: "fa-solid fa-briefcase-medical", color: "red" },
-                { name: "Masjid Jami' Nurul Huda", category: "Ibadah", lat: -8.5365, lng: 116.1300, icon: "fa-solid fa-mosque", color: "green" },
-                { name: "Air Terjun Tibu Atas", category: "Wisata", lat: -8.5300, lng: 116.1380, icon: "fa-solid fa-water", color: "purple" },
-                { name: "Mata Air Limbungan", category: "Wisata", lat: -8.5290, lng: 116.1350, icon: "fa-solid fa-fountain", color: "cyan" }
-            ],
             socialData: [
                 { id: "stunting", name: "Stunting", total: 15, icon: "fa-solid fa-child-reaching", color: "amber", bgColor: "bg-amber-50", textColor: "text-amber-500", countBgColor: "bg-amber-200", countTextColor: "text-amber-800" },
                 { id: "rumah", name: "Rumah Tdk Layak", total: 25, icon: "fa-solid fa-house-crack", color: "stone", bgColor: "bg-stone-50", textColor: "text-stone-500", countBgColor: "bg-stone-200", countTextColor: "text-stone-800" },
@@ -146,75 +138,7 @@
             "Jeringo Timur": "Munawir"
         };
 
-        const dusunDemoData = {
-            "Jeringo Daye": { penduduk: { total: 639, pria: 308, wanita: 331 }, agama: { islam: 632, hindu: 4, kristen: 3 }, pbb: { target: 33000000, realisasi: 24750000 }, jalan: { bagus: 1.1, rusak: 0.4 } },
-            "Jeringo Lauq": { penduduk: { total: 523, pria: 252, wanita: 271 }, agama: { islam: 518, hindu: 3, kristen: 2 }, pbb: { target: 27000000, realisasi: 20250000 }, jalan: { bagus: 0.9, rusak: 0.3 } },
-            "Jeringo Barat": { penduduk: { total: 581, pria: 280, wanita: 301 }, agama: { islam: 575, hindu: 4, kristen: 2 }, pbb: { target: 30000000, realisasi: 22500000 }, jalan: { bagus: 1.0, rusak: 0.5 } },
-            "Jeringo Limbungan": { penduduk: { total: 726, pria: 350, wanita: 376 }, agama: { islam: 718, hindu: 5, kristen: 3 }, pbb: { target: 37500000, realisasi: 28125000 }, jalan: { bagus: 1.5, rusak: 0.6 } },
-            "Jeringo Timur": { penduduk: { total: 436, pria: 210, wanita: 226 }, agama: { islam: 430, hindu: 3, kristen: 3 }, pbb: { target: 22500000, realisasi: 16875000 }, jalan: { bagus: 0.8, rusak: 0.2 } }
-        };
-
         // Function to load data from API and update villageData
-        async function loadVillageData() {
-            try {
-                console.log('Loading village data from API...');
-                const response = await fetch('/data-penduduk');
-                const data = await response.json();
-                console.log('API data received:', data);
-
-                // Update demography data
-                villageData.demography = {
-                    total: data.demografi.totalPenduduk,
-                    pria: data.demografi.totalPria,
-                    wanita: data.demografi.totalWanita
-                };
-
-                // Update generation composition
-                villageData.demography.generations = Object.values(data.komposisiGenerasi).map(gen => ({
-                    name: gen.label,
-                    total: gen.count,
-                    percentage: gen.percentage,
-                    color: getGenerationColor(gen.label),
-                    icon: getGenerationIcon(gen.label)
-                }));
-
-                // Update education data
-                villageData.demography.education = Object.values(data.tingkatPendidikan).map(edu => ({
-                    name: edu.label,
-                    total: edu.count,
-                    percentage: edu.percentage,
-                    color: getEducationColor(edu.label)
-                }));
-
-                // Update religion data
-                villageData.demography.religion = Object.values(data.komposisiAgama).map(rel => ({
-                    name: rel.label,
-                    total: rel.count,
-                    percentage: rel.percentage,
-                    icon: `fa-solid fa-${rel.icon}`,
-                    color: getReligionColor(rel.label),
-                    bgColor: getReligionBgColor(rel.label)
-                }));
-
-                // Update occupation data
-                villageData.demography.occupation = Object.values(data.strukturPekerjaan).map(occ => ({
-                    name: occ.label,
-                    total: occ.count,
-                    percentage: occ.percentage,
-                    icon: `fa-solid ${occ.icon}`,
-                    color: getOccupationColor(occ.label),
-                    bgColor: getOccupationBgColor(occ.label)
-                }));
-
-                console.log('Updated villageData:', villageData.demography);
-
-                // Push data to stack and trigger dashboard update
-                pushDataToStack();
-
-            } catch (error) {
-                console.error('Error loading village data:', error);
-            }
-        }
 
         // Data stack for managing data updates
         const dataStack = {
@@ -261,7 +185,7 @@
                 setTimeout(() => {
                     clearInterval(checkInterval);
                     console.log('populateDashboard function not found, using fallback display');
-                }, 5000);
+                }, 1000);
             }
         };
 
@@ -377,7 +301,6 @@
             // Load data from API
             // loadVillageData();
         });
-        loadVillageData()
     </script>
     <script src="{{ asset('command/js/command-center.js') }}"></script>
 @endpush

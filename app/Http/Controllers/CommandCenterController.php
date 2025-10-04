@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\CommandCenter\DataMap;
 
 class CommandCenterController extends Controller
 {
@@ -20,22 +21,48 @@ class CommandCenterController extends Controller
      */
     public function getVillageData()
     {
-        // This could be replaced with actual database queries
+        // Fetch data from profile_desas table
+        $profileDesa = DB::table('profile_desas')->first();
+
+        if (!$profileDesa) {
+            return response()->json([
+                'error' => 'Profile desa tidak ditemukan'
+            ], 404);
+        }
+
+        // Parse JSON fields
+        $batasWilayah = json_decode($profileDesa->batas_wilayah, true);
+        $alamatLengkap = json_decode($profileDesa->alamat_lengkap, true);
+
+        // Format luas wilayah
+        $luasWilayah = 'Menghitung...';
+        if (isset($batasWilayah['luas']) && $batasWilayah['luas']) {
+            $luas = floatval($batasWilayah['luas']);
+            $luasWilayah = number_format($luas, 2) . ' km² / ' . number_format($luas * 100, 2) . ' Ha';
+        }
+
+        // Get kepala desa name from sambutan_image filename or use default
+        $kepalaDesa = 'Sahril, SH'; // Default fallback
+        if ($profileDesa->sambutan_image) {
+            // You might want to store kepala desa name in a separate field
+            // For now, using the default value
+        }
+
+        // Build foto URL
+        $fotoUrl = $profileDesa->sambutan_image
+            ?  env('APP_URL') . '/storage/' . $profileDesa->sambutan_image
+            : 'https://awsimages.detik.net.id/community/media/visual/2024/05/04/ketua-papdesi-ntb_169.jpeg?w=500&q=90';
+
         $villageData = [
-            'profile' => [
-                'kepalaDesa' => 'Sahril, SH',
-                'luasWilayah' => 'Menghitung...',
-                'fotoUrl' => 'https://awsimages.detik.net.id/community/media/visual/2024/05/04/ketua-papdesi-ntb_169.jpeg?w=500&q=90'
-            ],
-            'demography' => [
-                'total' => 2905,
-                'pria' => 1399,
-                'wanita' => 1506
-            ],
-            // Add more data as needed
+            'namaDesa' => $profileDesa->nama,
+            'kepalaDesa' => $kepalaDesa,
+            'luasWilayah' => $luasWilayah,
+            'fotoUrl' => $fotoUrl,
+            'kecamatan' => $alamatLengkap['kecamatan'] ?? 'Gunungsari',
+            'kabupaten' => $alamatLengkap['kabupaten'] ?? 'Lombok Barat'
         ];
 
-        return response()->json($villageData);
+        return $villageData;
     }
 
     /**
@@ -221,12 +248,12 @@ class CommandCenterController extends Controller
     {
         // Define major religions with their icons
         $majorReligions = [
-            'Islam' => 'fa-star-and-crescent',
-            'Hindu' => 'fa-om',
-            'Kristen' => 'fa-cross',
-            'Katolik' => 'fa-cross',
-            'Konghucu' => 'fa-torii-gate',
-            'Buddha' => 'fa-yin-yang'
+            'Islam' => 'star-and-crescent',
+            'Hindu' => 'om',
+            'Kristen' => 'cross',
+            'Katolik' => 'cross',
+            'Konghucu' => 'torii-gate',
+            'Buddha' => 'yin-yang'
         ];
 
         // Get all unique religions from the database
@@ -408,13 +435,95 @@ class CommandCenterController extends Controller
         $tingkatPendidikan = $this->getTingkatPendidikan($demografi['totalPenduduk']);
         $komposisiAgama = $this->getKomposisiAgama($demografi['totalPenduduk']);
         $strukturPekerjaan = $this->getStrukturPekerjaan($demografi['totalPenduduk']);
-
+        $dataDesa = $this->getVillageData();
         return [
             'demografi' => $demografi,
             'komposisiGenerasi' => $komposisiGenerasi,
             'tingkatPendidikan' => $tingkatPendidikan,
             'komposisiAgama' => $komposisiAgama,
-            'strukturPekerjaan' => $strukturPekerjaan
+            'strukturPekerjaan' => $strukturPekerjaan,
+            'dataDesa' => $dataDesa
         ];
+    }
+
+    //simpan data map
+    public function simpanDataMap(Request $request)
+    {
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'latitude' => 'required|numeric',
+                'longitude' => 'required|numeric',
+                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240', // 10MB max
+                'type' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'data' => 'nullable|array',
+                'status' => 'nullable|string|max:255'
+            ]);
+
+            // Create new DataMap instance
+            $dataMap = new DataMap();
+            $dataMap->judul = $validated['name'];
+            $dataMap->lat = $validated['latitude'];
+            $dataMap->lng = $validated['longitude'];
+            $dataMap->kategori = $validated['type'] ?? null;
+            $dataMap->keterangan = $validated['description'] ?? null;
+            $dataMap->data = $validated['data'] ?? [];
+            $dataMap->status = $validated['status'] ?? 'active';
+
+            // Handle image upload and convert to WebP
+            if ($request->hasFile('gambar')) {
+                $imagePath = $dataMap->uploadImage($request->file('gambar'));
+                $dataMap->gambar = $imagePath;
+            }
+
+            $dataMap->save();
+
+            return redirect()->back()->with('success', 'Data map berhasil disimpan!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Get all data maps
+     */
+    public function getDataMaps()
+    {
+        try {
+            $dataMaps = DataMap::select('id', 'judul', 'gambar', 'lat', 'lng', 'kategori', 'keterangan', 'status', 'created_at')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'judul' => $item->judul,
+                        'gambar_url' => $item->image_url,
+                        'lat' => $item->lat,
+                        'lng' => $item->lng,
+                        'kategori' => $item->kategori,
+                        'keterangan' => $item->keterangan,
+                        'status' => $item->status,
+                        'created_at' => $item->created_at->format('Y-m-d H:i:s')
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $dataMaps
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

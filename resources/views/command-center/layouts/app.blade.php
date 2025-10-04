@@ -44,6 +44,7 @@
     <!-- Custom Scripts -->
     <script src="{{ asset('command/js/app.js') }}"></script>
     @stack('scripts')
+    @stack('js')
 </body>
 
 </html>

@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     const loginError = document.getElementById('login-error');
 
+
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const username = document.getElementById('username').value;
@@ -21,40 +22,317 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+
     function initializeApp() {
         const map = L.map('map', { zoomControl: false }).setView([-8.53686, 116.13239], 16);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
 
-        let originalBoundary = L.geoJSON(villageData.boundary, { style: f => f.properties.style }).bindPopup("<h3>Batas Wilayah Desa Jeringo</h3>").addTo(map);
+        let originalBoundary = L.geoJSON(villageData.boundary, { style: f => f.properties.style }).bindPopup("<h3>Batas Wilayah Desa Jeringo</h3> <button id='add-pointer-popup-btn' class='bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded shadow-lg text-xs' title='Add Pointer'><i class='fa-solid fa-plus mr-1'></i> Add Pointer</button>").addTo(map);
+
+        // Add click handler to original boundary polygon to capture coordinates
+        originalBoundary.on('click', (e) => {
+            console.log('Original boundary polygon clicked, coordinates:', e.latlng);
+            window.lastClickedCoordinates = e.latlng;
+            tempCoordinates = e.latlng;
+            // Don't prevent default to allow other click handlers to work
+        });
+        console.log('originalBoundary :' + originalBoundary);
 
         let drawnItems = new L.FeatureGroup().addTo(map);
+
+        // Add pointer functionality
+        let addPointerMode = false;
+        let tempCoordinates = null;
+        // Add pointer button event listener
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#add-pointer-btn') || e.target.closest('#add-pointer-popup-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Add Pointer button clicked');
+                // Langsung buka modal tanpa mode klik peta
+                showPointModal();
+            }
+        });
+
+        // Unified click handler to ensure coordinates are captured in all scenarios
+        map.on('click', (e) => {
+            // Always store coordinates globally for any modal that might need them
+            window.lastClickedCoordinates = e.latlng;
+            tempCoordinates = e.latlng;
+            console.log('Unified click handler - coordinates stored:', e.latlng);
+
+            // Check if modal is open and fill coordinates automatically
+            const modal = document.getElementById('point-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                setTimeout(() => {
+                    const latInput = document.getElementById('point-latitude');
+                    const lngInput = document.getElementById('point-longitude');
+
+                    if (latInput && lngInput) {
+                        latInput.value = e.latlng.lat.toFixed(13);
+                        lngInput.value = e.latlng.lng.toFixed(13);
+                        console.log('Coordinates auto-filled in modal:', e.latlng.lat, e.latlng.lng);
+                    }
+                }, 50);
+            }
+        });
+
+        function enableAddPointerMode() {
+            addPointerMode = true;
+            const button = document.getElementById('add-pointer-btn');
+            if (button) {
+                button.style.background = '#10b981';
+                button.innerHTML = '<i class="fa-solid fa-crosshairs" style="margin-right: 5px;"></i> Click on Map';
+            }
+
+            // Close any open popups
+            map.closePopup();
+
+            console.log('Add pointer mode enabled. Click on the map to place a point.');
+        }
+
+
+        function showPointModal() {
+            const modal = document.getElementById('point-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                // Tambahkan input koordinat manual jika belum ada
+                addCoordinateInputs();
+
+                // Isi koordinat jika ada tempCoordinates atau global coordinates
+                const coordinates = tempCoordinates || window.lastClickedCoordinates;
+                if (coordinates) {
+                    setTimeout(() => {
+                        const latInput = document.getElementById('point-latitude');
+                        const lngInput = document.getElementById('point-longitude');
+
+                        if (latInput && lngInput) {
+                            latInput.value = coordinates.lat.toFixed(13);
+                            lngInput.value = coordinates.lng.toFixed(13);
+                            console.log('Coordinates auto-filled from map click:', coordinates);
+                        }
+                    }, 100);
+                } else {
+                    console.log('No coordinates available to auto-fill');
+                }
+
+                console.log('Point modal shown');
+            } else {
+                console.error('Point modal not found');
+            }
+        }
+
+        function addCoordinateInputs() {
+            // Cek apakah input koordinat sudah ada
+            let latInput = document.getElementById('point-latitude');
+            let lngInput = document.getElementById('point-longitude');
+
+            if (!latInput || !lngInput) {
+                // Tambahkan input koordinat ke form
+                const form = document.getElementById('point-form');
+                if (form) {
+                    // Cari elemen terakhir sebelum tombol
+                    const buttonContainer = form.querySelector('.flex.space-x-2.pt-4');
+                    if (buttonContainer) {
+                        // Buat container untuk input koordinat
+                        const coordContainer = document.createElement('div');
+                        coordContainer.className = 'grid grid-cols-2 gap-4';
+                        coordContainer.innerHTML = `
+                            <div class="hidden">
+                                <label for="point-latitude" class="block text-sm font-medium text-gray-700 mb-2">Latitude:</label>
+                                <input type="number" id="point-latitude" name="latitude" step="any"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Masukkan latitude">
+                            </div>
+                            <div class="hidden">
+                                <label for="point-longitude" class="block text-sm font-medium text-gray-700 mb-2">Longitude:</label>
+                                <input type="number" id="point-longitude" name="longitude" step="any"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Masukkan longitude">
+                            </div>
+                        `;
+
+                        // Insert sebelum button container
+                        buttonContainer.parentNode.insertBefore(coordContainer, buttonContainer);
+                        console.log('Coordinate inputs added to form');
+                    }
+                }
+            }
+        }
+
+        function hidePointModal() {
+            const modal = document.getElementById('point-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                // Reset form
+                const form = document.getElementById('point-form');
+                if (form) {
+                    form.reset();
+                }
+            }
+            // Reset button state
+            const button = document.getElementById('add-pointer-btn');
+            if (button) {
+                button.style.background = '#3b82f6';
+                button.innerHTML = '<i class="fa-solid fa-plus" style="margin-right: 5px;"></i> Add Pointer';
+            }
+            addPointerMode = false;
+            tempCoordinates = null;
+        }
+
+        // Point modal event listeners
+        document.addEventListener('click', (e) => {
+            // Close modal button
+            if (e.target.closest('#close-point-modal')) {
+                e.preventDefault();
+                hidePointModal();
+            }
+
+            // Cancel button
+            if (e.target.closest('#cancel-point-btn')) {
+                e.preventDefault();
+                hidePointModal();
+            }
+        });
+
 
         const legendItems = {};
 
         const createCustomIcon = (iconClass, markerColor) => L.divIcon({ html: `<i class="${iconClass} fa-2x" style="color: ${markerColor};"></i>`, className: 'bg-transparent border-0', iconSize: [24, 24], iconAnchor: [12, 24], popupAnchor: [0, -24] });
 
-        villageData.locations.forEach(loc => {
-            const customIcon = createCustomIcon(loc.icon, loc.color);
-            L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(map).bindPopup(`<div class="popup-title">${loc.name}</div><span class="popup-category" style="background-color:${loc.color};">${loc.category}</span>`);
-            if (!legendItems[loc.category]) legendItems[loc.category] = { icon: loc.icon, color: loc.color };
-        });
+        // Function to load map data from API
+        async function loadMapDataFromAPI(map, legendItems) {
+            try {
+                const response = await fetch('/api/data-maps');
+                const result = await response.json();
 
-        villageData.socialMarkers.forEach(loc => {
-            const dataDefinition = villageData.socialData.find(d => d.name === loc.category);
-            const markerColor = dataDefinition ? `var(--color-${dataDefinition.color}-500)` : 'gray';
-            const customIcon = createCustomIcon(loc.icon, markerColor);
-            const marker = L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(map);
-            marker.on('click', () => {
-                let contentHtml = '<div class="space-y-2">';
-                for (const [key, value] of Object.entries(loc.details)) {
-                    contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">${key}</strong><span class="w-2/3">${value}</span></div>`;
+                if (result.success && result.data) {
+                    console.log('API data loaded:', result.data);
+
+                    // Peta kategori ke ikon dan warna (sesuai dengan legenda HTML)
+                    const categoryMapping = {
+                        'pemerintahan': { icon: 'fa-solid fa-landmark', color: 'blue' },
+                        'pendidikan': { icon: 'fa-solid fa-school', color: 'orange' },
+                        'kesehatan': { icon: 'fa-solid fa-briefcase-medical', color: 'red' },
+                        'ibadah': { icon: 'fa-solid fa-mosque', color: 'green' },
+                        'wisata': { icon: 'fa-solid fa-water', color: 'purple' },
+                        'stunting': { icon: 'fa-solid fa-child-reaching', color: 'var(--color-amber-500)' },
+                        'rumah_tdk_layak': { icon: 'fa-solid fa-house-crack', color: 'var(--color-stone-500)' },
+                        'lansia': { icon: 'fa-solid fa-person-cane', color: 'var(--color-sky-500)' },
+                        'anak_yatim': { icon: 'fa-solid fa-hands-holding-child', color: 'var(--color-teal-500)' },
+                        'CCTV': { icon: 'fa-solid fa-video', color: '#4b5563' }
+                    };
+
+                    // Buat marker berdasarkan data API
+                    result.data.forEach(item => {
+                        let iconClass = 'fa-solid fa-map-marker-alt';
+                        let markerColor = '#3b82f6'; // Default jika tidak cocok kategori
+
+                        if (item.kategori && categoryMapping[item.kategori]) {
+                            iconClass = categoryMapping[item.kategori].icon;
+                            markerColor = categoryMapping[item.kategori].color;
+                        }
+
+                        const customIcon = createCustomIcon(iconClass, markerColor);
+                        const marker = L.marker([parseFloat(item.lat), parseFloat(item.lng)], { icon: customIcon }).addTo(map);
+
+                        // Popup sederhana
+                        let popupContent = `<div class="popup-title">${item.judul}</div>`;
+                        if (item.kategori) {
+                            popupContent += `<span class="popup-category" style="background-color:${markerColor};">${item.kategori}</span>`;
+                        }
+                        if (item.keterangan) {
+                            popupContent += `<div class="mt-2 text-sm text-gray-600">${item.keterangan}</div>`;
+                        }
+                        if (item.gambar_url) {
+                            popupContent += `<div class="mt-2"><img src="${item.gambar_url}" alt="${item.judul}" class="w-full h-32 object-cover rounded"></div>`;
+                        }
+
+                        marker.bindPopup(popupContent);
+
+                        // Klik marker → tampilkan modal detail
+                        marker.on('click', () => {
+                            let contentHtml = '<div class="space-y-2">';
+                            contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">Judul</strong><span class="w-2/3">${item.judul}</span></div>`;
+
+                            if (item.kategori) {
+                                // Ubah kategori jadi huruf besar di awal tiap kata
+                                const formattedKategori = item.kategori
+                                    .replace(/_/g, ' ') // ubah underscore jadi spasi
+                                    .replace(/\b\w/g, char => char.toUpperCase()); // kapital tiap kata
+
+                                contentHtml += `<div class="flex border-b pb-1">
+                                    <strong class="w-1/3 text-gray-500">Kategori</strong>
+                                    <span class="w-2/3">${formattedKategori}</span>
+                                </div>`;
+                            }
+
+                            if (item.keterangan) {
+                                contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">Keterangan</strong><span class="w-2/3">${item.keterangan}</span></div>`;
+                            }
+
+                            // contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">Latitude</strong><span class="w-2/3">${item.lat}</span></div>`;
+                            // contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">Longitude</strong><span class="w-2/3">${item.lng}</span></div>`;
+                            contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">Status</strong><span class="w-2/3">${item.status}</span></div>`;
+                            contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">Dibuat</strong><span class="w-2/3">${new Date(item.created_at).toLocaleDateString('id-ID')}</span></div>`;
+                            contentHtml += '</div>';
+
+                            showModal(item.judul, contentHtml, item.gambar_url);
+                        });
+
+                        // Tambahkan ke legenda jika belum ada
+                        if (item.kategori && !legendItems[item.kategori]) {
+                            legendItems[item.kategori] = categoryMapping[item.kategori];
+                        }
+                    });
+
+                    // Jika perlu, tambahkan data hardcoded
+                    loadHardcodedData(map, legendItems);
+
+                } else {
+                    console.error('Failed to load API data:', result.message);
+                    loadHardcodedData(map, legendItems);
                 }
-                contentHtml += '</div>';
-                showModal(loc.name, contentHtml, loc.imageUrl);
+            } catch (error) {
+                console.error('Error loading API data:', error);
+                loadHardcodedData(map, legendItems);
+            }
+        }
+
+
+        // Function to load hardcoded data as fallback
+        function loadHardcodedData(map, legendItems) {
+            // Load hardcoded locations
+            villageData.locations.forEach(loc => {
+                const customIcon = createCustomIcon(loc.icon, loc.color);
+                L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(map).bindPopup(`<div class="popup-title">${loc.name}</div><span class="popup-category" style="background-color:${loc.color};">${loc.category}</span>`);
+                if (!legendItems[loc.category]) legendItems[loc.category] = { icon: loc.icon, color: loc.color };
             });
-            if (!legendItems[loc.category]) legendItems[loc.category] = { icon: loc.icon, color: markerColor };
-        });
+
+            // Load social markers
+            villageData.socialMarkers.forEach(loc => {
+                const dataDefinition = villageData.socialData.find(d => d.name === loc.category);
+                const markerColor = dataDefinition ? `var(--color-${dataDefinition.color}-500)` : 'gray';
+                const customIcon = createCustomIcon(loc.icon, markerColor);
+                const marker = L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(map);
+                marker.on('click', () => {
+                    let contentHtml = '<div class="space-y-2">';
+                    for (const [key, value] of Object.entries(loc.details)) {
+                        contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">${key}</strong><span class="w-2/3">${value}</span></div>`;
+                    }
+                    contentHtml += '</div>';
+                    showModal(loc.name, contentHtml, loc.imageUrl);
+                });
+                if (!legendItems[loc.category]) legendItems[loc.category] = { icon: loc.icon, color: markerColor };
+            });
+        }
+
+        // Load data from API
+        loadMapDataFromAPI(map, legendItems);
 
         const cctvIcon = L.divIcon({
             html: `<i class="fa-solid fa-video fa-lg" style="color: #4b5563;"></i>`,
@@ -171,7 +449,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Initialize all event listeners and functionality
-        initializeEventListeners(map, drawnItems, originalBoundary, updateAreaFromGeoJSON);
+        // Use setTimeout to ensure DOM is fully loaded
+        setTimeout(() => {
+            initializeEventListeners(map, drawnItems, originalBoundary, updateAreaFromGeoJSON);
+        }, 100);
+
+        // Initialize draw panel manager
+        setTimeout(() => {
+            console.log('Checking for drawPanelManager...', window.drawPanelManager);
+            if (window.drawPanelManager) {
+                try {
+                    // Check if populateDashboard function is available
+                    const populateDashboardFunc = typeof populateDashboard === 'function' ? populateDashboard : function() {
+                        console.log('populateDashboard function not available, using fallback');
+                    };
+
+                    window.drawPanelManager.init(map, drawnItems, originalBoundary, updateAreaFromGeoJSON, updateRoadStats, calculatePolygonArea, populateDashboardFunc);
+                    console.log('Draw Panel Manager initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing Draw Panel Manager:', error);
+                }
+            } else {
+                console.log('DrawPanelManager not available yet, retrying...');
+                // Retry after a short delay
+                setTimeout(() => {
+                    console.log('Retry: Checking for drawPanelManager...', window.drawPanelManager);
+                    if (window.drawPanelManager) {
+                        try {
+                            // Check if populateDashboard function is available
+                            const populateDashboardFunc = typeof populateDashboard === 'function' ? populateDashboard : function() {
+                                console.log('populateDashboard function not available, using fallback');
+                            };
+
+                            window.drawPanelManager.init(map, drawnItems, originalBoundary, updateAreaFromGeoJSON, updateRoadStats, calculatePolygonArea, populateDashboardFunc);
+                            console.log('Draw Panel Manager initialized successfully (retry)');
+                        } catch (error) {
+                            console.error('Error initializing Draw Panel Manager (retry):', error);
+                        }
+                    } else {
+                        console.error('DrawPanelManager failed to load after retry');
+                    }
+                }, 500);
+            }
+        }, 200);
 
         updateAreaFromGeoJSON(villageData.boundary);
 
@@ -206,11 +526,15 @@ document.addEventListener('DOMContentLoaded', () => {
             analysisPanel.classList.add('hidden');
         });
 
+        // Draw panel manager initialization moved to initializeApp() function
+
         // Add other event listeners here...
         // This is a simplified version - you would include all the functionality from the original file
     }
 
+
     // Modal functions
+
     function showModal(title, content, imageUrl) {
         const modal = document.getElementById('detail-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -245,4 +569,5 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) hideModal();
     });
+
 });
