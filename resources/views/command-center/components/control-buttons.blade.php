@@ -28,4 +28,8 @@
         class="bg-white text-gray-700 font-bold p-3 rounded-full shadow-lg hover:bg-gray-100 transition duration-300 flex items-center justify-center h-12 w-12">
         <i class="fa-solid fa-flask-vial fa-lg"></i>
     </button>
+    <button id="reload-pbb-data-button" title="Muat Ulang Data PBB"
+        class="bg-white text-gray-700 font-bold p-3 rounded-full shadow-lg hover:bg-gray-100 transition duration-300 flex items-center justify-center h-12 w-12">
+        <i class="fa-solid fa-sync-alt fa-lg"></i>
+    </button>
 </div>

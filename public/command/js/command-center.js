@@ -280,45 +280,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
 
                     // Jika perlu, tambahkan data hardcoded
-                    loadHardcodedData(map, legendItems);
+                    // loadHardcodedData(map, legendItems);
 
                 } else {
                     console.error('Failed to load API data:', result.message);
-                    loadHardcodedData(map, legendItems);
+                    // loadHardcodedData(map, legendItems);
                 }
             } catch (error) {
                 console.error('Error loading API data:', error);
-                loadHardcodedData(map, legendItems);
+                // loadHardcodedData(map, legendItems);
             }
         }
 
 
         // Function to load hardcoded data as fallback
-        function loadHardcodedData(map, legendItems) {
-            // Load hardcoded locations
-            villageData.locations.forEach(loc => {
-                const customIcon = createCustomIcon(loc.icon, loc.color);
-                L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(map).bindPopup(`<div class="popup-title">${loc.name}</div><span class="popup-category" style="background-color:${loc.color};">${loc.category}</span>`);
-                if (!legendItems[loc.category]) legendItems[loc.category] = { icon: loc.icon, color: loc.color };
-            });
-
-            // Load social markers
-            villageData.socialMarkers.forEach(loc => {
-                const dataDefinition = villageData.socialData.find(d => d.name === loc.category);
-                const markerColor = dataDefinition ? `var(--color-${dataDefinition.color}-500)` : 'gray';
-                const customIcon = createCustomIcon(loc.icon, markerColor);
-                const marker = L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(map);
-                marker.on('click', () => {
-                    let contentHtml = '<div class="space-y-2">';
-                    for (const [key, value] of Object.entries(loc.details)) {
-                        contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">${key}</strong><span class="w-2/3">${value}</span></div>`;
-                    }
-                    contentHtml += '</div>';
-                    showModal(loc.name, contentHtml, loc.imageUrl);
-                });
-                if (!legendItems[loc.category]) legendItems[loc.category] = { icon: loc.icon, color: markerColor };
-            });
-        }
 
         // Load data from API
         loadMapDataFromAPI(map, legendItems);
@@ -330,14 +305,6 @@ document.addEventListener('DOMContentLoaded', () => {
             iconAnchor: [12, 12]
         });
 
-        villageData.cctvLocations.forEach(cctv => {
-            const marker = L.marker([cctv.lat, cctv.lng], { icon: cctvIcon }).addTo(map);
-            marker.bindPopup(`<b>CCTV: ${cctv.name}</b><br><button class="view-cctv-btn mt-2 p-1 bg-blue-500 text-white rounded text-xs" data-name="${cctv.name}">Lihat Pantauan</button>`);
-
-            if (!legendItems['CCTV']) {
-                legendItems['CCTV'] = { icon: 'fa-solid fa-video', color: '#4b5563' };
-            }
-        });
 
         function updateRoadStats() {
             let goodKm = 0;
@@ -499,8 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             villageData.profile.luasWilayah = `${areaKm2.toFixed(2)} km² / ${areaHa.toFixed(2)} Ha`;
         }
 
-        // Initialize all event listeners and functionality
-        // Use setTimeout to ensure DOM is fully loaded
+        // Initialize basic UI listeners (non-drawing)
         setTimeout(() => {
             initializeEventListeners(map, drawnItems, originalBoundary, updateAreaFromGeoJSON);
         }, 100);
@@ -539,6 +505,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateAreaFromGeoJSON(villageData.boundary);
 
+        // Load PBB module and initialize
+        const setBoundaryVisible = (() => {
+            let boundaryVisible = true;
+            return (visible) => {
+                if (visible && !boundaryVisible) {
+                    try { originalBoundary.addTo(map); } catch (e) {}
+                    boundaryVisible = true;
+                } else if (!visible && boundaryVisible) {
+                    try { map.removeLayer(originalBoundary); } catch (e) {}
+                    boundaryVisible = false;
+                }
+            };
+        })();
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.async = true;
+                s.onload = resolve;
+                s.onerror = reject;
+                document.body.appendChild(s);
+            });
+        }
+
+        loadScript('/command/js/pbb.js').then(() => {
+            console.log('PBB script loaded successfully');
+            if (window.PBBModule && typeof window.PBBModule.init === 'function') {
+                console.log('Initializing PBB module...');
+                window.PBBModule.init({
+                    map,
+                    drawnItems,
+                    originalBoundary,
+                    setBoundaryVisible,
+                    calculatePolygonArea,
+                    showNotification,
+                });
+
+                // Initialize PBB data loading
+                if (typeof window.PBBModule.initializePBB === 'function') {
+                    console.log('Calling PBB initializePBB...');
+                    window.PBBModule.initializePBB();
+                } else {
+                    console.error('PBBModule.initializePBB function not found');
+                }
+            } else {
+                console.error('PBBModule not found or init function missing');
+            }
+        }).catch((err) => {
+            console.error('Failed to load PBB module', err);
+        });
+
         // Check if data stack is available and has data, otherwise use default data
         if (window.dataStack && window.dataStack.stack.length > 0) {
             // Data will be populated by the stack
@@ -551,6 +569,20 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutButton.addEventListener('click', () => {
             window.location.reload();
         });
+
+        // Add PBB reload button event listener
+        const reloadPbbButton = document.getElementById('reload-pbb-data-button');
+        if (reloadPbbButton) {
+            reloadPbbButton.addEventListener('click', () => {
+                console.log('Manual PBB reload requested');
+                if (window.PBBModule && typeof window.PBBModule.loadPBBData === 'function') {
+                    window.PBBModule.loadPBBData();
+                } else {
+                    console.error('PBBModule.loadPBBData not available');
+                    showNotification('Modul PBB belum dimuat. Silakan refresh halaman.', 'error');
+                }
+            });
+        }
     }
 
     function initializeEventListeners(map, drawnItems, originalBoundary, updateAreaFromGeoJSON) {
@@ -570,9 +602,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Draw panel manager initialization moved to initializeApp() function
-
-        // Add other event listeners here...
-        // This is a simplified version - you would include all the functionality from the original file
     }
 
 
@@ -900,5 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
             notification.remove();
         }, 3000);
     }
+    // Expose for modules
+    window.showNotification = showNotification;
 
 });

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Models\CommandCenter\DataMap;
 use App\Models\CommandCenter\Jalan;
+use App\Models\CommandCenter\PajakBumiBangunan;
 
 class CommandCenterController extends Controller
 {
@@ -869,6 +870,184 @@ class CommandCenterController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Data jalan berhasil dihapus!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Save Pajak Bumi & Bangunan polygon
+     */
+    public function savePBB(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'nama' => 'required|string|max:255',
+                'keterangan' => 'nullable|string',
+                'status' => 'nullable|string|max:255',
+                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
+                'geo_json' => 'required',
+                'properties' => 'nullable',
+                'kategori' => 'nullable|string|max:255', // e.g., house/field/yard/other
+            ]);
+
+            $pbb = new PajakBumiBangunan();
+            $pbb->nama = $validated['nama'];
+            $pbb->keterangan = $validated['keterangan'] ?? null;
+            $pbb->status = $validated['status'] ?? 'active';
+            $pbb->geo_json = $validated['geo_json'];
+            $pbb->properties = $validated['properties'] ?   $validated['properties'] : [];
+            $pbb->kategori = $validated['kategori'] ?? null;
+
+            if ($request->hasFile('gambar')) {
+                $image = $request->file('gambar');
+                $imageName = time() . '_' . $image->getClientOriginalName();
+                $imagePath = $image->storeAs('pbb', $imageName, 'public');
+                $pbb->gambar = $imagePath;
+            }
+
+            $pbb->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data PBB berhasil disimpan!',
+                'data' => [
+                    'id' => $pbb->id,
+                    'nama' => $pbb->nama,
+                    'kategori' => $pbb->kategori,
+                    'gambar_url' => $pbb->image_url,
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get PBB polygons
+     */
+    public function getPBB()
+    {
+        try {
+            $data = PajakBumiBangunan::select('id', 'nama', 'keterangan', 'status', 'gambar', 'geo_json', 'properties', 'kategori', 'created_at')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'nama' => $item->nama,
+                        'keterangan' => $item->keterangan,
+                        'status' => $item->status,
+                        'gambar_url' => $item->image_url,
+                        'geo_json' => $item->geo_json,
+                        'properties' => $item->properties,
+                        'kategori' => $item->kategori,
+                        'created_at' => $item->created_at->format('Y-m-d H:i:s')
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update PBB polygon
+     */
+    public function updatePBB(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'nama' => 'required|string|max:255',
+                'keterangan' => 'nullable|string',
+                'status' => 'nullable|string|max:255',
+                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
+                'geo_json' => 'required|array',
+                'properties' => 'nullable|array',
+                'kategori' => 'nullable|string|max:255',
+            ]);
+
+            $pbb = PajakBumiBangunan::findOrFail($id);
+            $pbb->nama = $validated['nama'];
+            $pbb->keterangan = $validated['keterangan'] ?? null;
+            $pbb->status = $validated['status'] ?? 'active';
+            $pbb->geo_json = $validated['geo_json'];
+            $pbb->properties = $validated['properties'] ?? [];
+            $pbb->kategori = $validated['kategori'] ?? null;
+
+            if ($request->hasFile('gambar')) {
+                if ($pbb->gambar && Storage::disk('public')->exists($pbb->gambar)) {
+                    Storage::disk('public')->delete($pbb->gambar);
+                }
+                $image = $request->file('gambar');
+                $imageName = time() . '_' . $image->getClientOriginalName();
+                $imagePath = $image->storeAs('pbb', $imageName, 'public');
+                $pbb->gambar = $imagePath;
+            }
+
+            $pbb->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data PBB berhasil diperbarui!',
+                'data' => [
+                    'id' => $pbb->id,
+                    'nama' => $pbb->nama,
+                    'kategori' => $pbb->kategori,
+                    'gambar_url' => $pbb->image_url,
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete PBB polygon
+     */
+    public function deletePBB(Request $request, $id)
+    {
+        try {
+            $pbb = PajakBumiBangunan::findOrFail($id);
+
+            if ($pbb->gambar && Storage::disk('public')->exists($pbb->gambar)) {
+                Storage::disk('public')->delete($pbb->gambar);
+            }
+
+            $pbb->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data PBB berhasil dihapus!'
             ]);
         } catch (\Exception $e) {
             return response()->json([

@@ -95,8 +95,12 @@
     <!-- Pajak Bumi & Bangunan (PBB) -->
     <div class="bg-white p-5 rounded-xl shadow-lg">
         <h2 class="text-lg font-bold text-gray-700 border-b pb-2 mb-3">Pajak Bumi & Bangunan (PBB)</h2>
-        <div id="data-pbb-container" class="space-y-3 text-sm">
-            <!-- Data PBB akan dimasukkan oleh JavaScript -->
+        <div class="mb-2">
+            <input id="pbb-search" type="text" placeholder="Cari PBB (nama/kategori/kode)"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+        </div>
+        <div id="data-pbb-container" class="space-y-2 text-sm max-h-72 overflow-y-auto pr-1">
+            <!-- List data PBB diisi oleh JavaScript -->
         </div>
     </div>
 
@@ -495,7 +499,6 @@
 
         // Function to update road condition data
         function updateRoadConditionData(roadData, statistics = null) {
-            console.log('updateRoadConditionData called with:', roadData, 'statistics:', statistics);
 
             if (!roadData || !Array.isArray(roadData)) {
                 console.warn('Invalid road data:', roadData);
@@ -512,7 +515,7 @@
 
             // Use statistics from API if available, otherwise calculate from road data
             if (statistics && statistics.percentages) {
-                console.log('Using statistics from API:', statistics);
+
 
                 // Use API statistics
                 goodPercentage = parseFloat(statistics.percentages.good_percentage || 0);
@@ -530,7 +533,7 @@
                 alleyKm = (totalKm * alleyPercentage / 100);
             } else {
                 // Fallback: Calculate from road data
-                console.log('Calculating statistics from road data');
+
 
                 roadData.forEach(road => {
                     // Get length from the API response (now calculated from GeoJSON)
@@ -539,9 +542,6 @@
 
                     // Get road type from the API response
                     const roadType = (road.type || '').toString();
-
-                    console.log(`Processing road: ${road.nama}, Type: ${roadType}, Length: ${length} km`);
-
                     // Categorize roads based on type
                     if (roadType === 'Bagus') {
                         goodKm += length;
@@ -570,12 +570,7 @@
             document.getElementById('bad-road-stats').textContent = `${badKm.toFixed(2)} km (${badPercentage}%)`;
             document.getElementById('alley-road-stats').textContent = `${alleyKm.toFixed(2)} km (${alleyPercentage}%)`;
 
-            console.log('Final Road Statistics:', {
-                totalKm: totalKm.toFixed(2),
-                goodKm: goodKm.toFixed(2) + ' km (' + goodPercentage + '%)',
-                badKm: badKm.toFixed(2) + ' km (' + badPercentage + '%)',
-                alleyKm: alleyKm.toFixed(2) + ' km (' + alleyPercentage + '%)'
-            });
+
 
             // Update progress bars
             document.getElementById('good-road-progress').style.width = goodPercentage + '%';
