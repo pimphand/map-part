@@ -112,7 +112,74 @@
     <div class="bg-white p-5 rounded-xl shadow-lg">
         <h2 class="text-lg font-bold text-gray-700 border-b pb-2 mb-3">Kondisi Jalan Desa</h2>
         <div id="data-jalan-container" class="space-y-3 text-sm">
-            <!-- Data jalan akan dimasukkan oleh JavaScript -->
+            <ul class="space-y-3">
+                <!-- Total Road Length -->
+                <li class="flex justify-between items-center p-2 bg-gray-50 rounded-lg hidden">
+                    <span class="text-sm font-medium text-gray-700">Total Panjang Jalan (Digambar):</span>
+                    <strong class="text-gray-800" id="total-road-length">0.00 km</strong>
+                </li>
+
+                <!-- Road Condition Description -->
+                <li class="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400 hidden">
+                    <div class="flex items-start">
+                        <i class="fa-solid fa-info-circle text-blue-500 mt-1 mr-2"></i>
+                        <div>
+                            <p class="text-sm text-blue-800 font-medium mb-1">Analisis Kondisi Jalan:</p>
+                            <p class="text-sm text-blue-700" id="road-analysis">Belum ada data jalan tersedia.</p>
+                        </div>
+                    </div>
+                </li>
+
+                <!-- Road Statistics -->
+                <li class="p-2 bg-green-50 rounded-lg">
+                    <div class="mb-1 flex justify-between">
+                        <span class="text-green-600 font-semibold flex items-center">
+                            <i class="fa-solid fa-road mr-2"></i>Jalan Bagus
+                        </span>
+                        <span id="good-road-stats">0.00 km (0%)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-green-500 h-2.5 rounded-full" id="good-road-progress" style="width: 0%"></div>
+                    </div>
+                </li>
+
+                <li class="p-2 bg-red-50 rounded-lg">
+                    <div class="mb-1 flex justify-between">
+                        <span class="text-red-600 font-semibold flex items-center">
+                            <i class="fa-solid fa-road-circle-exclamation mr-2"></i>Jalan Rusak
+                        </span>
+                        <span id="bad-road-stats">0.00 km (0%)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-red-500 h-2.5 rounded-full" id="bad-road-progress" style="width: 0%"></div>
+                    </div>
+                </li>
+
+                <li class="p-2 bg-orange-50 rounded-lg">
+                    <div class="mb-1 flex justify-between">
+                        <span class="text-orange-500 font-semibold flex items-center">
+                            <i class="fa-solid fa-road-lane mr-2"></i>Jalan Gang
+                        </span>
+                        <span id="alley-road-stats">0.00 km (0%)</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-orange-500 h-2.5 rounded-full" id="alley-road-progress" style="width: 0%"></div>
+                    </div>
+                </li>
+
+                <!-- Specific Notes -->
+                <li class="p-3 bg-gray-50 rounded-lg">
+                    <p class="text-xs text-gray-600 font-medium mb-2 flex items-center">
+                        <i class="fa-solid fa-clipboard-list mr-2"></i>Catatan Khusus:
+                    </p>
+                    <ul class="text-xs text-gray-600 space-y-1" id="road-notes">
+                        <li class="flex items-center p-1 hover:bg-gray-100 rounded">
+                            <i class="fa-solid fa-circle text-gray-400 mr-2" style="font-size: 4px;"></i>
+                            <span>Belum ada data jalan tersedia</span>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
         </div>
     </div>
 
@@ -244,10 +311,8 @@
         }
         async function loadVillageData() {
             try {
-                console.log('Loading village data from API...');
                 const response = await fetch('/data-penduduk');
                 const data = await response.json();
-                console.log('API data received:', data);
 
                 // Update profile data
                 if (data.dataDesa) {
@@ -328,7 +393,6 @@
                     bgColor: getOccupationBgColor(occ.label)
                 }));
 
-                console.log('Updated villageData:', villageData.demography);
 
                 // Update dashboard with loaded data
                 populateDashboard();
@@ -429,9 +493,168 @@
             return colors[label] || 'bg-gray-50';
         }
 
+        // Function to update road condition data
+        function updateRoadConditionData(roadData, statistics = null) {
+            console.log('updateRoadConditionData called with:', roadData, 'statistics:', statistics);
+
+            if (!roadData || !Array.isArray(roadData)) {
+                console.warn('Invalid road data:', roadData);
+                return;
+            }
+
+            let goodKm = 0;
+            let badKm = 0;
+            let alleyKm = 0;
+            let totalKm = 0;
+            let goodPercentage = 0;
+            let badPercentage = 0;
+            let alleyPercentage = 0;
+
+            // Use statistics from API if available, otherwise calculate from road data
+            if (statistics && statistics.percentages) {
+                console.log('Using statistics from API:', statistics);
+
+                // Use API statistics
+                goodPercentage = parseFloat(statistics.percentages.good_percentage || 0);
+                badPercentage = parseFloat(statistics.percentages.damaged_percentage || 0);
+                alleyPercentage = parseFloat(statistics.percentages.gang_percentage || 0);
+
+                // Calculate km values from percentages (approximate)
+                roadData.forEach(road => {
+                    const length = parseFloat(road.length || 0);
+                    totalKm += length;
+                });
+
+                goodKm = (totalKm * goodPercentage / 100);
+                badKm = (totalKm * badPercentage / 100);
+                alleyKm = (totalKm * alleyPercentage / 100);
+            } else {
+                // Fallback: Calculate from road data
+                console.log('Calculating statistics from road data');
+
+                roadData.forEach(road => {
+                    // Get length from the API response (now calculated from GeoJSON)
+                    const length = parseFloat(road.length || 0);
+                    totalKm += length;
+
+                    // Get road type from the API response
+                    const roadType = (road.type || '').toString();
+
+                    console.log(`Processing road: ${road.nama}, Type: ${roadType}, Length: ${length} km`);
+
+                    // Categorize roads based on type
+                    if (roadType === 'Bagus') {
+                        goodKm += length;
+                    } else if (roadType === 'Rusak') {
+                        badKm += length;
+                    } else if (roadType === 'Gang') {
+                        alleyKm += length;
+                    } else {
+                        // Default to bad roads if type is unclear
+                        badKm += length;
+                    }
+                });
+
+                // Calculate percentages
+                goodPercentage = totalKm > 0 ? parseFloat((goodKm / totalKm * 100).toFixed(1)) : 0;
+                badPercentage = totalKm > 0 ? parseFloat((badKm / totalKm * 100).toFixed(1)) : 0;
+                alleyPercentage = totalKm > 0 ? parseFloat((alleyKm / totalKm * 100).toFixed(1)) : 0;
+            }
+
+            // Update total road length
+            document.getElementById('total-road-length').textContent = totalKm.toFixed(2) + ' km';
+
+
+            // Update road statistics
+            document.getElementById('good-road-stats').textContent = `${goodKm.toFixed(2)} km (${goodPercentage}%)`;
+            document.getElementById('bad-road-stats').textContent = `${badKm.toFixed(2)} km (${badPercentage}%)`;
+            document.getElementById('alley-road-stats').textContent = `${alleyKm.toFixed(2)} km (${alleyPercentage}%)`;
+
+            console.log('Final Road Statistics:', {
+                totalKm: totalKm.toFixed(2),
+                goodKm: goodKm.toFixed(2) + ' km (' + goodPercentage + '%)',
+                badKm: badKm.toFixed(2) + ' km (' + badPercentage + '%)',
+                alleyKm: alleyKm.toFixed(2) + ' km (' + alleyPercentage + '%)'
+            });
+
+            // Update progress bars
+            document.getElementById('good-road-progress').style.width = goodPercentage + '%';
+            document.getElementById('bad-road-progress').style.width = badPercentage + '%';
+            document.getElementById('alley-road-progress').style.width = alleyPercentage + '%';
+
+            // Update analysis text
+            let analysisText = 'Kondisi jalan desa ';
+            if (totalKm === 0) {
+                analysisText = 'Belum ada data jalan tersedia.';
+            } else if (badPercentage > 70) {
+                analysisText += 'memerlukan perbaikan segera dengan mayoritas jalan dalam kondisi rusak.';
+            } else if (badPercentage > 40) {
+                analysisText += 'memerlukan perhatian khusus dengan sebagian jalan dalam kondisi rusak.';
+            } else if (goodPercentage > 70) {
+                analysisText += 'dalam kondisi baik dengan mayoritas jalan layak pakai.';
+            } else {
+                analysisText += 'bervariasi dengan kondisi jalan yang berbeda-beda.';
+            }
+            document.getElementById('road-analysis').textContent = analysisText;
+
+            // Update road notes
+            const notesContainer = document.getElementById('road-notes');
+            notesContainer.innerHTML = '';
+
+            if (totalKm > 0) {
+                if (badKm > 0) {
+                    const badNote = document.createElement('li');
+                    badNote.className = 'flex items-center p-1 hover:bg-gray-100 rounded';
+                    badNote.innerHTML = '<i class="fa-solid fa-circle text-gray-400 mr-2" style="font-size: 4px;"></i><span>' + badKm.toFixed(2) + ' km jalan rusak perlu diperbaiki (' + badPercentage + '%)</span>';
+                    notesContainer.appendChild(badNote);
+                }
+
+                if (goodKm > 0) {
+                    const goodNote = document.createElement('li');
+                    goodNote.className = 'flex items-center p-1 hover:bg-gray-100 rounded';
+                    goodNote.innerHTML = '<i class="fa-solid fa-circle text-gray-400 mr-2" style="font-size: 4px;"></i><span>' + goodKm.toFixed(2) + ' km jalan dalam kondisi baik (' + goodPercentage + '%)</span>';
+                    notesContainer.appendChild(goodNote);
+                }
+
+                if (alleyKm > 0) {
+                    const alleyNote = document.createElement('li');
+                    alleyNote.className = 'flex items-center p-1 hover:bg-gray-100 rounded';
+                    alleyNote.innerHTML = '<i class="fa-solid fa-circle text-gray-400 mr-2" style="font-size: 4px;"></i><span>' + alleyKm.toFixed(2) + ' km jalan gang tersedia (' + alleyPercentage + '%)</span>';
+                    notesContainer.appendChild(alleyNote);
+                }
+            } else {
+                const noDataNote = document.createElement('li');
+                noDataNote.className = 'flex items-center p-1 hover:bg-gray-100 rounded';
+                noDataNote.innerHTML = '<i class="fa-solid fa-circle text-gray-400 mr-2" style="font-size: 4px;"></i><span>Belum ada data jalan tersedia</span>';
+                notesContainer.appendChild(noDataNote);
+            }
+        }
+
         // Load data when page is ready
         document.addEventListener('DOMContentLoaded', function () {
             loadVillageData();
+
+            // Load road data
+            fetch('/api/jalans')
+                .then(response => {
+                    console.log('Road API response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Road API data received:', data);
+                    if (data.success && data.data) {
+                        updateRoadConditionData(data.data, data.statistics);
+                    } else {
+                        console.warn('Road API returned no data or error:', data);
+                        // Show default state when no data
+                        updateRoadConditionData([]);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading road data:', error);
+                    // Show default state on error
+                    updateRoadConditionData([]);
+                });
         });
 
     </script>

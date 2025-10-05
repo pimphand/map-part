@@ -10,9 +10,6 @@ window.drawPanelManager = {
     populateDashboard: null,
 
     init: function(map, drawnItems, originalBoundary, updateAreaFromGeoJSON, updateRoadStats, calculatePolygonArea, populateDashboard) {
-        console.log('Initializing Draw Panel Manager...');
-        console.log('L.Draw available:', typeof L !== 'undefined' && typeof L.Draw !== 'undefined');
-        console.log('L.Draw.Polygon available:', typeof L !== 'undefined' && typeof L.Draw !== 'undefined' && typeof L.Draw.Polygon !== 'undefined');
 
         this.map = map;
         this.drawnItems = drawnItems;
@@ -26,8 +23,12 @@ window.drawPanelManager = {
         this.attachEventListeners();
         this.attachPointModalListeners();
         this.initializeDynamicInputs();
-        this.loadExistingDataMaps();
-        console.log('Draw Panel Manager initialized successfully');
+
+        // Load existing data after a short delay to ensure map is fully initialized
+        setTimeout(() => {
+            console.log('Initializing draw panel manager and loading existing data...'); // Debug log
+            this.loadExistingDataMaps();
+        }, 1000);
     },
 
     initializeDrawControls: function() {
@@ -66,75 +67,76 @@ window.drawPanelManager = {
     },
 
     attachEventListeners: function() {
-        console.log('Attaching event listeners...');
 
         // Use event delegation for better reliability
         document.addEventListener('click', (e) => {
+            // Skip if clicking on map elements (let Leaflet handle them)
+            if (e.target.closest('.leaflet-popup') ||
+                e.target.closest('.leaflet-popup-content') ||
+                e.target.closest('.leaflet-popup-content-wrapper') ||
+                e.target.closest('.leaflet-popup-tip') ||
+                e.target.closest('.leaflet-popup-close-button') ||
+                e.target.closest('svg') ||
+                e.target.closest('path') ||
+                e.target.closest('.leaflet-interactive')) {
+                return; // Let Leaflet handle popup and map element events
+            }
+
             // Draw Boundary Icon - Village Boundary
             if (e.target.closest('#draw-boundary-icon')) {
                 e.preventDefault();
-                console.log('Draw boundary button clicked');
                 this.startPolygonDrawing('village');
             }
 
             // Draw Dusun Boundary Icon
             if (e.target.closest('#draw-dusun-boundary-icon')) {
                 e.preventDefault();
-                console.log('Draw dusun boundary button clicked');
                 this.startPolygonDrawing('dusun');
             }
 
             // Road Drawing Buttons
             if (e.target.closest('#draw-good-road-icon')) {
                 e.preventDefault();
-                console.log('Draw good road button clicked');
                 this.startPolylineDrawing('Bagus');
             }
 
             if (e.target.closest('#draw-bad-road-icon')) {
                 e.preventDefault();
-                console.log('Draw bad road button clicked');
                 this.startPolylineDrawing('Rusak');
             }
 
             if (e.target.closest('#draw-alley-road-icon')) {
                 e.preventDefault();
-                console.log('Draw alley road button clicked');
                 this.startPolylineDrawing('Gang');
             }
 
             // Draw Point Icon
             if (e.target.closest('#draw-point-icon')) {
                 e.preventDefault();
-                console.log('Draw point button clicked');
                 this.enablePointPlacement();
             }
 
             // Refresh data maps button
             if (e.target.closest('#refresh-data-maps-button')) {
                 e.preventDefault();
-                console.log('Refresh data maps button clicked');
                 this.refreshDataMaps();
             }
 
             // Clear all drawings button
             if (e.target.closest('#clear-draw-button')) {
                 e.preventDefault();
-                console.log('Clear all drawings button clicked');
                 this.clearAllDrawings();
             }
 
             // Close draw panel button
             if (e.target.closest('#close-draw-panel-button')) {
                 e.preventDefault();
-                console.log('Close draw panel button clicked');
                 this.hideDrawPanel();
             }
         });
 
         // Map events for draw created
         this.map.on(L.Draw.Event.CREATED, (event) => {
-            console.log('Draw created event:', event);
             this.handleDrawCreated(event);
         });
 
@@ -142,19 +144,25 @@ window.drawPanelManager = {
         this.map.on('click', (e) => {
             // Always store coordinates globally for other functionalities
             window.lastClickedCoordinates = e.latlng;
-            console.log('Coordinates stored globally from draw-panel:', e.latlng);
 
             if (window.pointPlacementMode) {
-                console.log('Map click detected in point placement mode!', e);
                 this.handleMapClickForPoint(e);
             }
         });
 
-        console.log('Event listeners attached successfully');
+        // Handle clicks on existing road polylines to ensure popups work
+        this.map.on('click', (e) => {
+            // Check if the click is on a polyline (road)
+            const target = e.originalEvent.target;
+            if (target && (target.tagName === 'path' || target.classList.contains('leaflet-interactive'))) {
+                // Let Leaflet handle the popup naturally
+                return;
+            }
+        });
+
     },
 
     startPolygonDrawing: function(boundaryType) {
-        console.log(`Starting polygon drawing for: ${boundaryType}`);
 
         // Check if map is available
         if (!this.map) {
@@ -164,7 +172,6 @@ window.drawPanelManager = {
 
         // Disable any existing drawer
         if (this.currentDrawer) {
-            console.log('Disabling existing drawer');
             this.currentDrawer.disable();
         }
 
@@ -192,18 +199,14 @@ window.drawPanelManager = {
                 return;
             }
 
-            console.log('Creating L.Draw.Polygon with options:', polygonOptions);
             this.currentDrawer = new L.Draw.Polygon(this.map, polygonOptions);
-            console.log('Polygon drawer created:', this.currentDrawer);
 
             this.currentDrawer.enable();
-            console.log('Polygon drawer enabled');
 
             // Update button appearance
             this.updateButtonState('draw-boundary-icon', boundaryType === 'village');
             this.updateButtonState('draw-dusun-boundary-icon', boundaryType === 'dusun');
 
-            console.log(`Successfully started ${boundaryType} polygon drawing`);
 
             // Show instruction to user
             alert('Mode drawing polygon aktif! Klik di peta untuk membuat titik-titik polygon, double-click untuk menyelesaikan.');
@@ -237,7 +240,6 @@ window.drawPanelManager = {
         this.updateButtonState('draw-bad-road-icon', roadStatus === 'Rusak');
         this.updateButtonState('draw-alley-road-icon', roadStatus === 'Gang');
 
-        console.log(`Started ${roadStatus} road drawing`);
     },
 
     updateButtonState: function(buttonId, isActive) {
@@ -266,7 +268,6 @@ window.drawPanelManager = {
 
             // Add click handler to dusun polygon to capture coordinates
             layer.on('click', (e) => {
-                console.log('Dusun polygon clicked, coordinates:', e.latlng);
                 window.lastClickedCoordinates = e.latlng;
                 // Don't prevent default to allow other click handlers to work
             });
@@ -284,7 +285,6 @@ window.drawPanelManager = {
 
             // Add click handler to polygon to capture coordinates
             layer.on('click', (e) => {
-                console.log('Polygon clicked, coordinates:', e.latlng);
                 window.lastClickedCoordinates = e.latlng;
                 // Don't prevent default to allow other click handlers to work
             });
@@ -301,11 +301,10 @@ window.drawPanelManager = {
             }
             layer.options.lengthKm = totalDistance / 1000;
             layer.options.roadStatus = this.currentDrawer.options.roadStatus;
-            layer.bindPopup(`<b>Status Jalan:</b> ${layer.options.roadStatus}<br><b>Panjang:</b> ${layer.options.lengthKm.toFixed(2)} km`);
-            this.drawnItems.addLayer(layer);
-            if (typeof this.updateRoadStats === 'function') {
-                this.updateRoadStats();
-            }
+
+            // Store temporarily for modal
+            window.tempRoadLayer = layer;
+            this.showNewRoadModal(layer.options.roadStatus, layer.options.lengthKm, layer.toGeoJSON());
         }
 
         this.resetDrawPanel();
@@ -350,7 +349,6 @@ window.drawPanelManager = {
             this.updateRoadStats();
         }
 
-        console.log('All drawings cleared');
     },
 
     hideDrawPanel: function() {
@@ -406,6 +404,161 @@ window.drawPanelManager = {
         });
     },
 
+    showNewRoadModal: function(roadStatus, lengthKm, geoJson) {
+        // Create a modal for road data entry
+        const modalHtml = `
+            <div id="road-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+                    <h3 class="text-lg font-bold mb-4">Informasi Jalan</h3>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600">Status: <strong>${roadStatus}</strong></p>
+                        <p class="text-sm text-gray-600">Panjang: <strong>${lengthKm.toFixed(2)} km</strong></p>
+                    </div>
+
+                    <form id="road-form" class="space-y-4">
+                        <div>
+                            <label for="road-name" class="block text-sm font-medium text-gray-700 mb-2">Nama Jalan:</label>
+                            <input type="text" id="road-name" name="nama"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Masukkan nama jalan" required>
+                        </div>
+
+                        <div>
+                            <label for="road-description" class="block text-sm font-medium text-gray-700 mb-2">Keterangan:</label>
+                            <textarea id="road-description" name="keterangan" rows="3"
+                                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      placeholder="Masukkan keterangan (opsional)"></textarea>
+                        </div>
+
+                        <div>
+                            <label for="road-image" class="block text-sm font-medium text-gray-700 mb-2">Gambar:</label>
+                            <input type="file" id="road-image" name="gambar" accept="image/*"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <input type="hidden" id="road-type" name="type" value="${roadStatus}">
+                        <input type="hidden" id="road-geo-json" name="geo_json" value="">
+
+                        <div class="flex space-x-2 pt-4">
+                            <button type="submit" id="save-road-btn"
+                                    class="flex-1 bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300">
+                                <i class="fa-solid fa-save mr-2"></i> Simpan Jalan
+                            </button>
+                            <button type="button" id="cancel-road-btn"
+                                    class="flex-1 bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-300">
+                                Batal
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Set the geo_json value
+        document.getElementById('road-geo-json').value = JSON.stringify(geoJson);
+
+        // Add event listeners for modal buttons
+        document.getElementById('save-road-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.saveRoadData();
+        });
+
+        document.getElementById('cancel-road-btn').addEventListener('click', () => {
+            if (window.tempRoadLayer) {
+                this.map.removeLayer(window.tempRoadLayer);
+                window.tempRoadLayer = null;
+            }
+            document.getElementById('road-modal').remove();
+            this.resetDrawPanel();
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('road-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'road-modal') {
+                if (window.tempRoadLayer) {
+                    this.map.removeLayer(window.tempRoadLayer);
+                    window.tempRoadLayer = null;
+                }
+                document.getElementById('road-modal').remove();
+                this.resetDrawPanel();
+            }
+        });
+    },
+
+    saveRoadData: function() {
+        const form = document.getElementById('road-form');
+        const formData = new FormData(form);
+
+        // Get the geo_json data
+        const geoJson = JSON.parse(document.getElementById('road-geo-json').value);
+        formData.append('geo_json', JSON.stringify(geoJson));
+
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            formData.append('_token', csrfToken);
+        }
+
+        // Show loading state
+        const saveBtn = document.getElementById('save-road-btn');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Menyimpan...';
+        saveBtn.disabled = true;
+
+        // Send data to server
+        fetch('/api/jalans', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': csrfToken || ''
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add the road layer to the map
+                if (window.tempRoadLayer) {
+                    const layer = window.tempRoadLayer;
+                    layer.bindPopup(`<b>${data.data.formatted_type}:</b> ${data.data.nama}<br><b>Panjang:</b> ${layer.options.lengthKm.toFixed(2)} km`);
+                    this.drawnItems.addLayer(layer);
+                    window.tempRoadLayer = null;
+                }
+
+                // Update road stats
+                if (typeof this.updateRoadStats === 'function') {
+                    this.updateRoadStats();
+                }
+
+                // Reload road data to update dashboard
+                this.loadExistingRoadData();
+
+                // Show success message
+                this.showNotification(data.message, 'success');
+
+                // Close modal
+                document.getElementById('road-modal').remove();
+                this.resetDrawPanel();
+            } else {
+                // Show error message
+                this.showNotification(data.message || 'Terjadi kesalahan saat menyimpan data jalan', 'error');
+
+                // Reset button state
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error saving road data:', error);
+            this.showNotification('Terjadi kesalahan saat menyimpan data jalan', 'error');
+
+            // Reset button state
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+        });
+    },
+
     showPointModal: function() {
         const modal = document.getElementById('point-modal');
         if (modal) {
@@ -432,14 +585,11 @@ window.drawPanelManager = {
     },
 
     attachPointModalListeners: function() {
-        console.log('Attaching point modal listeners...');
 
         // Close modal button
         const closeBtn = document.getElementById('close-point-modal');
         if (closeBtn) {
-            console.log('Close button found, attaching listener');
             closeBtn.onclick = () => {
-                console.log('Close button clicked');
                 // Clear temporary coordinates and reset state
                 window.tempPointCoordinates = null;
                 window.pointPlacementMode = false;
@@ -453,9 +603,7 @@ window.drawPanelManager = {
         // Cancel button
         const cancelBtn = document.getElementById('cancel-point-btn');
         if (cancelBtn) {
-            console.log('Cancel button found, attaching listener');
             cancelBtn.onclick = () => {
-                console.log('Cancel button clicked');
                 // Clear temporary coordinates and reset state
                 window.tempPointCoordinates = null;
                 window.pointPlacementMode = false;
@@ -470,10 +618,8 @@ window.drawPanelManager = {
         // Close modal when clicking outside
         const modal = document.getElementById('point-modal');
         if (modal) {
-            console.log('Modal found, attaching click outside listener');
             modal.onclick = (e) => {
                 if (e.target === modal) {
-                    console.log('Clicked outside modal');
                     // Clear temporary coordinates and reset state
                     window.tempPointCoordinates = null;
                     window.pointPlacementMode = false;
@@ -485,7 +631,6 @@ window.drawPanelManager = {
             console.warn('Modal not found');
         }
 
-        console.log('Point modal listeners attached');
     },
 
 
@@ -510,14 +655,11 @@ window.drawPanelManager = {
         // Hide draw panel and show instruction
         this.hideDrawPanel();
 
-        console.log('Point placement mode enabled. Click on the map to place a point.');
     },
 
     handleMapClickForPoint: function(e) {
-        console.log('Map click detected for point placement!', e);
 
         const latlng = e.latlng;
-        console.log('Clicked coordinates:', latlng);
 
         // Store the clicked coordinates for later use
         window.tempPointCoordinates = latlng;
@@ -533,7 +675,6 @@ window.drawPanelManager = {
 
     // Dynamic Code-Value Input Functions
     initializeDynamicInputs: function() {
-        console.log('Initializing dynamic inputs...');
 
         // Add event listener for the add button
         const addBtn = document.getElementById('add-code-value-btn');
@@ -729,9 +870,90 @@ window.drawPanelManager = {
 
     // Load existing data maps from server
     loadExistingDataMaps: function() {
-        console.log('Loading existing data maps...');
-        // This function is now simplified - data will be loaded via page refresh
-        // after form submission instead of AJAX
+        this.loadExistingRoadData();
+    },
+
+    // Load existing road data from server
+    loadExistingRoadData: function() {
+
+        fetch('/api/jalans')
+        .then(response => {
+            return response.json();
+        })
+        .then(data => {
+            console.log('Draw panel - Road data received:', data);
+
+            if (data.success && data.data) {
+
+                this.renderExistingRoads(data.data);
+
+                // Update road condition data in dashboard
+                if (typeof updateRoadConditionData === 'function') {
+                    console.log('Calling updateRoadConditionData from draw panel');
+                    updateRoadConditionData(data.data, data.statistics);
+                } else {
+                    console.warn('updateRoadConditionData function not found');
+                }
+            } else {
+                console.warn('No road data received or API returned error:', data);
+                // Update with empty data to show default state
+                if (typeof updateRoadConditionData === 'function') {
+                    updateRoadConditionData([]);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading road data:', error);
+        });
+    },
+
+    // Render existing roads on the map
+    renderExistingRoads: function(roadData) {
+        roadData.forEach(road => {
+            try {
+                // Parse geo_json if it's a string
+                let geoJsonData = road.geo_json;
+                if (typeof geoJsonData === 'string') {
+                    geoJsonData = JSON.parse(geoJsonData);
+                }
+
+                if (geoJsonData && geoJsonData.geometry) {
+                    // Create polyline from GeoJSON
+                    const polyline = L.geoJSON(geoJsonData, {
+                        style: {
+                            color: road.type === 'Bagus' ? '#10b981' :
+                                   road.type === 'Rusak' ? '#ef4444' :
+                                   road.type === 'Gang' ? '#f59e0b' : '#6b7280',
+                            weight: 4
+                        }
+                    });
+
+                    // Calculate length if not available
+                    const layers = polyline.getLayers();
+                    if (layers.length > 0) {
+                        const latlngs = layers[0].getLatLngs();
+                        let totalDistance = 0;
+                        for (let i = 0; i < latlngs.length - 1; i++) {
+                            totalDistance += latlngs[i].distanceTo(latlngs[i + 1]);
+                        }
+                        const lengthKm = totalDistance / 1000;
+
+                        // Add click handler to show modal instead of popup
+                        polyline.on('click', (e) => {
+                            window.lastClickedCoordinates = e.latlng;
+                            this.showRoadModal(road, lengthKm);
+                        });
+
+                        this.drawnItems.addLayer(polyline);
+                        console.log('Road added to map:', road.nama); // Debug log
+                    }
+                } else {
+                    console.warn('Invalid geo_json for road:', road.nama, geoJsonData);
+                }
+            } catch (error) {
+                console.error('Error rendering road:', road.nama, error);
+            }
+        });
     },
 
     getIconForCategory: function(category) {
@@ -768,13 +990,97 @@ window.drawPanelManager = {
 
     // Refresh data maps (clear existing and reload)
     refreshDataMaps: function() {
-        console.log('Refreshing data maps...');
 
-        // Clear existing markers
+        // Clear existing markers and roads
         this.drawnItems.clearLayers();
 
-        // Reload the page to get fresh data
-        window.location.reload();
+        // Reload existing data
+        this.loadExistingDataMaps();
+
+        // Show notification
+        this.showNotification('Data peta berhasil dimuat ulang', 'success');
+    },
+
+    // Show road detail modal
+    showRoadModal: function(road, lengthKm) {
+        const modal = document.getElementById('road-detail-modal');
+        if (!modal) return;
+
+        // Get road type icon and color
+        const roadTypeIcons = {
+            'Bagus': 'fa-road',
+            'Rusak': 'fa-road-circle-exclamation',
+            'Gang': 'fa-road-lane'
+        };
+
+        const roadTypeColors = {
+            'Bagus': 'text-green-600',
+            'Rusak': 'text-red-600',
+            'Gang': 'text-orange-500'
+        };
+
+        // Set modal content
+        document.getElementById('road-modal-name').textContent = road.nama;
+        document.getElementById('road-modal-type').textContent = road.formatted_type;
+        document.getElementById('road-modal-length').textContent = `${lengthKm.toFixed(2)} km`;
+        document.getElementById('road-modal-status').textContent = road.formatted_type;
+
+        // Set icon and color
+        const iconElement = document.getElementById('road-modal-icon');
+        iconElement.className = `fa-solid ${roadTypeIcons[road.type] || 'fa-road'} text-2xl ${roadTypeColors[road.type] || 'text-gray-600'}`;
+
+        // Show image if available
+        const imageSection = document.getElementById('road-modal-image-section');
+        const imageElement = document.getElementById('road-modal-image');
+        if (road.gambar_url && road.gambar_url.trim()) {
+            imageElement.src = road.gambar_url;
+            imageElement.alt = `Gambar ${road.nama}`;
+            imageSection.classList.remove('hidden');
+        } else {
+            imageSection.classList.add('hidden');
+        }
+
+        // Show description if available
+        const descriptionDiv = document.getElementById('road-modal-description');
+        const keteranganElement = document.getElementById('road-modal-keterangan');
+        if (road.keterangan && road.keterangan.trim()) {
+            keteranganElement.textContent = road.keterangan;
+            descriptionDiv.classList.remove('hidden');
+        } else {
+            descriptionDiv.classList.add('hidden');
+        }
+
+        // Show modal with animation
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.querySelector('.modal-container').classList.remove('scale-95');
+            modal.querySelector('.modal-container').classList.add('scale-100');
+        }, 10);
+
+        // Add event listeners for closing modal
+        const closeModal = () => {
+            modal.querySelector('.modal-container').classList.remove('scale-100');
+            modal.querySelector('.modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        };
+
+        // Remove existing listeners to prevent duplicates
+        document.getElementById('road-modal-close').removeEventListener('click', closeModal);
+        document.getElementById('road-modal-close-btn').removeEventListener('click', closeModal);
+        modal.removeEventListener('click', closeModal);
+
+        // Add new listeners
+        document.getElementById('road-modal-close').addEventListener('click', closeModal);
+        document.getElementById('road-modal-close-btn').addEventListener('click', closeModal);
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
     }
 };
 

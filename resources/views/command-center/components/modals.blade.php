@@ -51,6 +51,61 @@
     </div>
 </div>
 
+<!-- Road Detail Modal -->
+<div id="road-detail-modal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60] hidden modal-overlay">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md modal-container transform scale-95">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h3 id="road-modal-title" class="text-lg font-bold text-gray-800">Detail Jalan</h3>
+            <button id="road-modal-close" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+        </div>
+        <div id="road-modal-content" class="p-5 space-y-3">
+            <div class="flex items-center space-x-2">
+                <i id="road-modal-icon" class="fa-solid fa-road text-2xl"></i>
+                <div>
+                    <h4 id="road-modal-name" class="text-lg font-semibold text-gray-800"></h4>
+                    <p id="road-modal-type" class="text-sm text-gray-600"></p>
+                </div>
+            </div>
+            <div class="border-t pt-3">
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span class="font-medium text-gray-700">Panjang:</span>
+                        <span id="road-modal-length" class="text-gray-900 font-semibold"></span>
+                    </div>
+                    <div>
+                        <span class="font-medium text-gray-700">Status:</span>
+                        <span id="road-modal-status" class="text-gray-900 font-semibold"></span>
+                    </div>
+                </div>
+            </div>
+            <div id="road-modal-image-section" class="hidden">
+                <div class="border-t pt-3">
+                    <span class="font-medium text-gray-700 block mb-2">Gambar Jalan:</span>
+                    <div class="relative">
+                        <img id="road-modal-image" src="" alt="Gambar Jalan"
+                            class="w-full h-48 object-cover rounded-lg border shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                            onclick="this.classList.toggle('object-cover'); this.classList.toggle('object-contain');">
+                        <div class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                            <i class="fa-solid fa-expand mr-1"></i>Klik untuk zoom
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="road-modal-description" class="text-sm text-gray-600 hidden">
+                <span class="font-medium text-gray-700">Keterangan:</span>
+                <p id="road-modal-keterangan" class="mt-1"></p>
+            </div>
+            <div class="flex justify-end pt-4">
+                <button id="road-modal-close-btn"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- CCTV Fullscreen Modal -->
 <div id="cctv-fullscreen-modal"
     class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-[70] hidden modal-overlay">

@@ -13,3 +13,8 @@ Route::post('/api/village-data', [App\Http\Controllers\CommandCenterController::
 // Data Map Routes
 Route::post('/api/data-maps', [App\Http\Controllers\CommandCenterController::class, 'simpanDataMap'])->name('api.data-maps.store');
 Route::get('/api/data-maps', [App\Http\Controllers\CommandCenterController::class, 'getDataMaps'])->name('api.data-maps.index');
+
+// Road Data Routes
+Route::post('/api/jalans', [App\Http\Controllers\CommandCenterController::class, 'saveRoadData'])->name('api.jalans.store');
+Route::get('/api/jalans', [App\Http\Controllers\CommandCenterController::class, 'getRoadData'])->name('api.jalans.index');
+Route::delete('/api/jalans/{id}', [App\Http\Controllers\CommandCenterController::class, 'deleteRoadData'])->name('api.jalans.destroy');

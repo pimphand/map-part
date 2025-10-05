@@ -32,12 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add click handler to original boundary polygon to capture coordinates
         originalBoundary.on('click', (e) => {
-            console.log('Original boundary polygon clicked, coordinates:', e.latlng);
             window.lastClickedCoordinates = e.latlng;
             tempCoordinates = e.latlng;
             // Don't prevent default to allow other click handlers to work
         });
-        console.log('originalBoundary :' + originalBoundary);
 
         let drawnItems = new L.FeatureGroup().addTo(map);
 
@@ -59,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Always store coordinates globally for any modal that might need them
             window.lastClickedCoordinates = e.latlng;
             tempCoordinates = e.latlng;
-            console.log('Unified click handler - coordinates stored:', e.latlng);
 
             // Check if modal is open and fill coordinates automatically
             const modal = document.getElementById('point-modal');
@@ -71,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (latInput && lngInput) {
                         latInput.value = e.latlng.lat.toFixed(13);
                         lngInput.value = e.latlng.lng.toFixed(13);
-                        console.log('Coordinates auto-filled in modal:', e.latlng.lat, e.latlng.lng);
                     }
                 }, 50);
             }
@@ -110,14 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (latInput && lngInput) {
                             latInput.value = coordinates.lat.toFixed(13);
                             lngInput.value = coordinates.lng.toFixed(13);
-                            console.log('Coordinates auto-filled from map click:', coordinates);
                         }
                     }, 100);
                 } else {
-                    console.log('No coordinates available to auto-fill');
                 }
 
-                console.log('Point modal shown');
             } else {
                 console.error('Point modal not found');
             }
@@ -155,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         // Insert sebelum button container
                         buttonContainer.parentNode.insertBefore(coordContainer, buttonContainer);
-                        console.log('Coordinate inputs added to form');
                     }
                 }
             }
@@ -209,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
 
                 if (result.success && result.data) {
-                    console.log('API data loaded:', result.data);
 
                     // Peta kategori ke ikon dan warna (sesuai dengan legenda HTML)
                     const categoryMapping = {
@@ -376,38 +367,100 @@ document.addEventListener('DOMContentLoaded', () => {
             const alleyPercentage = totalLengthKm > 0 ? ((alleyKm / totalLengthKm) * 100).toFixed(0) : 0;
 
             if (totalLengthKm > 0) {
+                // Generate road condition description based on percentages
+                let conditionDescription = '';
+                if (goodPercentage >= 70) {
+                    conditionDescription = 'Kondisi jalan desa sangat baik dengan mayoritas jalan dalam kondisi bagus.';
+                } else if (goodPercentage >= 50) {
+                    conditionDescription = 'Kondisi jalan desa cukup baik dengan sebagian besar jalan dalam kondisi layak.';
+                } else if (goodPercentage >= 30) {
+                    conditionDescription = 'Kondisi jalan desa memerlukan perhatian dengan banyak jalan yang perlu diperbaiki.';
+                } else {
+                    conditionDescription = 'Kondisi jalan desa memerlukan perbaikan segera dengan mayoritas jalan dalam kondisi rusak.';
+                }
+
+                // Add specific notes based on road types
+                let specificNotes = [];
+                if (badKm > 0) {
+                    specificNotes.push(`${badKm.toFixed(2)} km jalan rusak perlu diperbaiki`);
+                }
+                if (alleyKm > 0) {
+                    specificNotes.push(`${alleyKm.toFixed(2)} km jalan gang memerlukan perhatian khusus`);
+                }
+                if (goodKm > 0) {
+                    specificNotes.push(`${goodKm.toFixed(2)} km jalan dalam kondisi baik`);
+                }
+
                 jalanContainer.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <span>Total Panjang Jalan (Digambar):</span>
-                        <strong class="text-gray-800">${totalLengthKm.toFixed(2)} km</strong>
-                    </div>
-                    <div>
-                        <div class="mb-1 flex justify-between">
-                            <span class="text-green-600 font-semibold">Jalan Bagus</span>
-                            <span>${goodKm.toFixed(2)} km (${goodPercentage}%)</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-green-500 h-2.5 rounded-full" style="width: ${goodPercentage}%"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="mb-1 flex justify-between">
-                            <span class="text-red-600 font-semibold">Jalan Rusak</span>
-                            <span>${badKm.toFixed(2)} km (${badPercentage}%)</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-red-500 h-2.5 rounded-full" style="width: ${badPercentage}%"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="mb-1 flex justify-between">
-                            <span class="text-orange-500 font-semibold">Jalan Gang</span>
-                            <span>${alleyKm.toFixed(2)} km (${alleyPercentage}%)</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="bg-orange-500 h-2.5 rounded-full" style="width: ${alleyPercentage}%"></div>
-                        </div>
-                    </div>
+                    <ul class="space-y-3">
+                        <!-- Total Road Length -->
+
+
+                        <!-- Road Condition Description -->
+                        <li class="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                            <div class="flex items-start">
+                                <i class="fa-solid fa-info-circle text-blue-500 mt-1 mr-2"></i>
+                                <div>
+                                    <p class="text-sm text-blue-800 font-medium mb-1">Analisis Kondisi Jalan:</p>
+                                    <p class="text-sm text-blue-700">${conditionDescription}</p>
+                                </div>
+                            </div>
+                        </li>
+
+                        <!-- Road Statistics -->
+                        <li class="p-2 bg-green-50 rounded-lg">
+                            <div class="mb-1 flex justify-between">
+                                <span class="text-green-600 font-semibold flex items-center">
+                                    <i class="fa-solid fa-road mr-2"></i>Jalan Bagus
+                                </span>
+                                <span>${goodKm.toFixed(2)} km (${goodPercentage}%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-green-500 h-2.5 rounded-full" style="width: ${goodPercentage}%"></div>
+                            </div>
+                        </li>
+
+                        <li class="p-2 bg-red-50 rounded-lg">
+                            <div class="mb-1 flex justify-between">
+                                <span class="text-red-600 font-semibold flex items-center">
+                                    <i class="fa-solid fa-road-circle-exclamation mr-2"></i>Jalan Rusak
+                                </span>
+                                <span>${badKm.toFixed(2)} km (${badPercentage}%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-red-500 h-2.5 rounded-full" style="width: ${badPercentage}%"></div>
+                            </div>
+                        </li>
+
+                        <li class="p-2 bg-orange-50 rounded-lg">
+                            <div class="mb-1 flex justify-between">
+                                <span class="text-orange-500 font-semibold flex items-center">
+                                    <i class="fa-solid fa-road-lane mr-2"></i>Jalan Gang
+                                </span>
+                                <span>${alleyKm.toFixed(2)} km (${alleyPercentage}%)</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-orange-500 h-2.5 rounded-full" style="width: ${alleyPercentage}%"></div>
+                            </div>
+                        </li>
+
+                        <!-- Specific Notes -->
+                        ${specificNotes.length > 0 ? `
+                        <li class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-xs text-gray-600 font-medium mb-2 flex items-center">
+                                <i class="fa-solid fa-clipboard-list mr-2"></i>Catatan Khusus:
+                            </p>
+                            <ul class="text-xs text-gray-600 space-y-1">
+                                ${specificNotes.map(note => `
+                                    <li class="flex items-center p-1 hover:bg-gray-100 rounded">
+                                        <i class="fa-solid fa-circle text-gray-400 mr-2" style="font-size: 4px;"></i>
+                                        <span>${note}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </li>
+                        ` : ''}
+                    </ul>
                 `;
             } else {
                 jalanContainer.innerHTML = `<p class="text-center italic text-sm text-gray-500">Belum ada data jalan yang digambar.</p>`;
@@ -454,33 +507,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Initialize draw panel manager
         setTimeout(() => {
-            console.log('Checking for drawPanelManager...', window.drawPanelManager);
             if (window.drawPanelManager) {
                 try {
                     // Check if populateDashboard function is available
                     const populateDashboardFunc = typeof populateDashboard === 'function' ? populateDashboard : function() {
-                        console.log('populateDashboard function not available, using fallback');
                     };
 
                     window.drawPanelManager.init(map, drawnItems, originalBoundary, updateAreaFromGeoJSON, updateRoadStats, calculatePolygonArea, populateDashboardFunc);
-                    console.log('Draw Panel Manager initialized successfully');
                 } catch (error) {
                     console.error('Error initializing Draw Panel Manager:', error);
                 }
             } else {
-                console.log('DrawPanelManager not available yet, retrying...');
                 // Retry after a short delay
                 setTimeout(() => {
-                    console.log('Retry: Checking for drawPanelManager...', window.drawPanelManager);
                     if (window.drawPanelManager) {
                         try {
                             // Check if populateDashboard function is available
                             const populateDashboardFunc = typeof populateDashboard === 'function' ? populateDashboard : function() {
-                                console.log('populateDashboard function not available, using fallback');
                             };
 
                             window.drawPanelManager.init(map, drawnItems, originalBoundary, updateAreaFromGeoJSON, updateRoadStats, calculatePolygonArea, populateDashboardFunc);
-                            console.log('Draw Panel Manager initialized successfully (retry)');
                         } catch (error) {
                             console.error('Error initializing Draw Panel Manager (retry):', error);
                         }
@@ -496,7 +542,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check if data stack is available and has data, otherwise use default data
         if (window.dataStack && window.dataStack.stack.length > 0) {
             // Data will be populated by the stack
-            console.log('Data stack initialized, waiting for API data...');
         } else {
             // Use default data
             populateDashboard();

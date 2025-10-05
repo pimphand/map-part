@@ -1,5 +1,4 @@
 // Main app.js file for command center
-console.log('Command Center App Loaded');
 
 // Global utilities
 window.CommandCenter = {

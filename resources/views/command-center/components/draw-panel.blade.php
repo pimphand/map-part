@@ -213,5 +213,4 @@
             }
         });
     </script>
-    <script src="{{ asset('command/js/draw-panel.js') }}"></script>
 @endpush

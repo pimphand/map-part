@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\CommandCenter\DataMap;
+use App\Models\Jalan;
 
 class CommandCenterController extends Controller
 {
@@ -518,6 +519,168 @@ class CommandCenterController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $dataMaps
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Save road data to database
+     */
+    public function saveRoadData(Request $request)
+    {
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'nama' => 'required|string|max:255',
+                'type' => 'required|string|in:Bagus,Rusak,Gang',
+                'keterangan' => 'nullable|string',
+                'status' => 'nullable|string|max:255',
+                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240', // 10MB max
+                'kategori' => 'nullable|string|max:255'
+            ]);
+
+            // Create new Jalan instance
+            $jalan = new Jalan();
+            $jalan->nama = $validated['nama'];
+            $jalan->type = $validated['type'];
+            $jalan->keterangan = $validated['keterangan'] ?? null;
+            $jalan->status = $validated['status'] ?? 'active';
+            $jalan->geo_json = $request->geo_json;
+            $jalan->kategori = $validated['kategori'] ?? null;
+
+            // Handle image upload
+            if ($request->hasFile('gambar')) {
+                $image = $request->file('gambar');
+                $imageName = time() . '_' . $image->getClientOriginalName();
+                $imagePath = $image->storeAs('jalans', $imageName, 'public');
+                $jalan->gambar = $imagePath;
+            }
+
+            $jalan->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data jalan berhasil disimpan!',
+                'data' => [
+                    'id' => $jalan->id,
+                    'nama' => $jalan->nama,
+                    'type' => $jalan->type,
+                    'formatted_type' => $jalan->formatted_type,
+                    'gambar_url' => $jalan->image_url
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all road data
+     */
+    public function getRoadData()
+    {
+        try {
+            $jalans = Jalan::select('id', 'nama', 'gambar', 'type', 'keterangan', 'status', 'geo_json', 'kategori', 'created_at')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($item) {
+                    // Calculate length from GeoJSON coordinates
+
+                    return [
+                        'id' => $item->id,
+                        'nama' => $item->nama,
+                        'gambar_url' => $item->image_url,
+                        'type' => $item->type,
+                        'formatted_type' => $item->formatted_type,
+                        'keterangan' => $item->keterangan,
+                        'status' => $item->status,
+                        'geo_json' => $item->geo_json,
+                        'kategori' => $item->kategori,
+                        'created_at' => $item->created_at->format('Y-m-d H:i:s')
+                    ];
+                });
+
+            // Calculate road statistics
+            $totalRoads = Jalan::count();
+            $damagedRoads = Jalan::where('type', 'Rusak')->count();
+            $goodRoads = Jalan::where('type', 'Bagus')->count();
+            $gangRoads = Jalan::where('type', 'Gang')->count();
+
+            // Calculate percentages
+            $damagedPercentage = $totalRoads > 0 ? round(($damagedRoads / $totalRoads) * 100, 2) : 0;
+            $goodPercentage = $totalRoads > 0 ? round(($goodRoads / $totalRoads) * 100, 2) : 0;
+            $gangPercentage = $totalRoads > 0 ? round(($gangRoads / $totalRoads) * 100, 2) : 0;
+
+            return response()->json([
+                'success' => true,
+                'data' => $jalans,
+                'statistics' => [
+                    'total_roads' => $totalRoads,
+                    'damaged_roads' => $damagedRoads,
+                    'good_roads' => $goodRoads,
+                    'gang_roads' => $gangRoads,
+                    'percentages' => [
+                        'damaged_percentage' => $damagedPercentage,
+                        'good_percentage' => $goodPercentage,
+                        'gang_percentage' => $gangPercentage
+                    ]
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    /**
+     * Calculate distance between two points using Haversine formula
+     */
+    private function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    {
+        $earthRadius = 6371000; // Earth's radius in meters
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Delete road data
+     */
+    public function deleteRoadData(Request $request, $id)
+    {
+        try {
+            $jalan = Jalan::findOrFail($id);
+            $jalan->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data jalan berhasil dihapus!'
             ]);
         } catch (\Exception $e) {
             return response()->json([

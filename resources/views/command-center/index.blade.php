@@ -145,28 +145,23 @@
             stack: [],
             isInitialized: false,
             push: function (data) {
-                console.log('Pushing data to stack:', data);
                 this.stack.push(data);
                 this.processStack();
             },
             processStack: function () {
                 if (this.stack.length > 0) {
                     const data = this.stack.pop();
-                    console.log('Processing data from stack:', data);
                     this.updateDashboard(data);
                 }
             },
             updateDashboard: function (data) {
-                console.log('Updating dashboard with data:', data);
                 // Update the global villageData with new data
                 Object.assign(villageData, data);
 
                 // Call the existing populateDashboard function if it exists
                 if (typeof populateDashboard === 'function') {
-                    console.log('Calling populateDashboard function');
                     populateDashboard();
                 } else {
-                    console.log('populateDashboard function not found, waiting...');
                     // Fallback: wait for the function to be available
                     this.waitForPopulateDashboard();
                 }
@@ -176,7 +171,6 @@
                 const checkInterval = setInterval(() => {
                     if (typeof populateDashboard === 'function') {
                         clearInterval(checkInterval);
-                        console.log('populateDashboard function found, calling it');
                         populateDashboard();
                     }
                 }, 100);
@@ -184,7 +178,6 @@
                 // Timeout after 5 seconds
                 setTimeout(() => {
                     clearInterval(checkInterval);
-                    console.log('populateDashboard function not found, using fallback display');
                 }, 1000);
             }
         };
@@ -303,4 +296,5 @@
         });
     </script>
     <script src="{{ asset('command/js/command-center.js') }}"></script>
+    <script src="{{ asset('command/js/draw-panel.js') }}"></script>
 @endpush
