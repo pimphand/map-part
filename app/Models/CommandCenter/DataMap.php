@@ -57,7 +57,7 @@ class DataMap extends Model
     }
 
     /**
-     * Get the full URL for the image
+     * Get the full URL for the image or CCTV URL
      */
     public function getImageUrlAttribute()
     {
@@ -65,18 +65,30 @@ class DataMap extends Model
             return null;
         }
 
+        // If it's a CCTV type and gambar contains a URL, return it directly
+        if ($this->kategori === 'cctv' && (str_starts_with($this->gambar, 'http://') || str_starts_with($this->gambar, 'https://') || str_starts_with($this->gambar, 'rtsp://'))) {
+            return $this->gambar;
+        }
+
+        // For regular image files, return the asset URL
         return asset('storage/' . $this->gambar);
     }
 
     /**
-     * Delete the associated image when model is deleted
+     * Delete the associated image when model is deleted (only for file uploads, not URLs)
      */
     protected static function boot()
     {
         parent::boot();
 
         static::deleting(function ($dataMap) {
-            if ($dataMap->gambar) {
+            // Only delete files from storage, not URLs
+            if (
+                $dataMap->gambar &&
+                !str_starts_with($dataMap->gambar, 'http://') &&
+                !str_starts_with($dataMap->gambar, 'https://') &&
+                !str_starts_with($dataMap->gambar, 'rtsp://')
+            ) {
                 Storage::disk('public')->delete($dataMap->gambar);
             }
         });

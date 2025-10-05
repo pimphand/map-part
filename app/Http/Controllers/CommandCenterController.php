@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Models\CommandCenter\DataMap;
 use App\Models\CommandCenter\Jalan;
 
@@ -451,17 +452,26 @@ class CommandCenterController extends Controller
     public function simpanDataMap(Request $request)
     {
         try {
-            // Validate the request
-            $validated = $request->validate([
+            // Dynamic validation based on type
+            $validationRules = [
                 'name' => 'required|string|max:255',
                 'latitude' => 'required|numeric',
                 'longitude' => 'required|numeric',
-                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240', // 10MB max
                 'type' => 'nullable|string|max:255',
                 'description' => 'nullable|string',
                 'data' => 'nullable|array',
                 'status' => 'nullable|string|max:255'
-            ]);
+            ];
+
+            // Add validation rules based on type
+            if ($request->type === 'cctv') {
+                $validationRules['cctv_url'] = 'required|url|max:500';
+                $validationRules['gambar'] = 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240';
+            } else {
+                $validationRules['gambar'] = 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240';
+            }
+
+            $validated = $request->validate($validationRules);
 
             // Create new DataMap instance
             $dataMap = new DataMap();
@@ -473,8 +483,12 @@ class CommandCenterController extends Controller
             $dataMap->data = $validated['data'] ?? [];
             $dataMap->status = $validated['status'] ?? 'active';
 
-            // Handle image upload and convert to WebP
-            if ($request->hasFile('gambar')) {
+            // Handle image upload and convert to WebP or CCTV URL
+            if ($request->type === 'cctv' && !empty($validated['cctv_url'])) {
+                // For CCTV, store the URL directly
+                $dataMap->gambar = $validated['cctv_url'];
+            } elseif ($request->hasFile('gambar')) {
+                // For other types, handle image upload
                 $imagePath = $dataMap->uploadImage($request->file('gambar'));
                 $dataMap->gambar = $imagePath;
             }
@@ -534,17 +548,26 @@ class CommandCenterController extends Controller
     public function updateDataMap(Request $request, $id)
     {
         try {
-            // Validate the request
-            $validated = $request->validate([
+            // Dynamic validation based on type
+            $validationRules = [
                 'name' => 'required|string|max:255',
                 'latitude' => 'required|numeric',
                 'longitude' => 'required|numeric',
-                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240', // 10MB max
                 'type' => 'nullable|string|max:255',
                 'description' => 'nullable|string',
                 'data' => 'nullable|array',
                 'status' => 'nullable|string|max:255'
-            ]);
+            ];
+
+            // Add validation rules based on type
+            if ($request->type === 'cctv') {
+                $validationRules['cctv_url'] = 'required|url|max:500';
+                $validationRules['gambar'] = 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240';
+            } else {
+                $validationRules['gambar'] = 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240';
+            }
+
+            $validated = $request->validate($validationRules);
 
             $dataMap = DataMap::findOrFail($id);
             $dataMap->judul = $validated['name'];
@@ -555,11 +578,14 @@ class CommandCenterController extends Controller
             $dataMap->data = $validated['data'] ?? [];
             $dataMap->status = $validated['status'] ?? 'active';
 
-            // Handle image upload and convert to WebP
-            if ($request->hasFile('gambar')) {
-                // Delete old image if exists
-                if ($dataMap->gambar && \Storage::disk('public')->exists($dataMap->gambar)) {
-                    \Storage::disk('public')->delete($dataMap->gambar);
+            // Handle image upload and convert to WebP or CCTV URL
+            if ($request->type === 'cctv' && !empty($validated['cctv_url'])) {
+                // For CCTV, store the URL directly
+                $dataMap->gambar = $validated['cctv_url'];
+            } elseif ($request->hasFile('gambar')) {
+                // Delete old image if exists (only for file uploads, not URLs)
+                if ($dataMap->gambar && Storage::disk('public')->exists($dataMap->gambar)) {
+                    Storage::disk('public')->delete($dataMap->gambar);
                 }
 
                 $imagePath = $dataMap->uploadImage($request->file('gambar'));
@@ -603,8 +629,8 @@ class CommandCenterController extends Controller
             $dataMap = DataMap::findOrFail($id);
 
             // Delete image if exists
-            if ($dataMap->gambar && \Storage::disk('public')->exists($dataMap->gambar)) {
-                \Storage::disk('public')->delete($dataMap->gambar);
+            if ($dataMap->gambar && Storage::disk('public')->exists($dataMap->gambar)) {
+                Storage::disk('public')->delete($dataMap->gambar);
             }
 
             $dataMap->delete();
@@ -788,8 +814,8 @@ class CommandCenterController extends Controller
             // Handle image upload
             if ($request->hasFile('gambar')) {
                 // Delete old image if exists
-                if ($jalan->gambar && \Storage::disk('public')->exists($jalan->gambar)) {
-                    \Storage::disk('public')->delete($jalan->gambar);
+                if ($jalan->gambar && Storage::disk('public')->exists($jalan->gambar)) {
+                    Storage::disk('public')->delete($jalan->gambar);
                 }
 
                 $image = $request->file('gambar');
@@ -834,8 +860,8 @@ class CommandCenterController extends Controller
             $jalan = Jalan::findOrFail($id);
 
             // Delete image if exists
-            if ($jalan->gambar && \Storage::disk('public')->exists($jalan->gambar)) {
-                \Storage::disk('public')->delete($jalan->gambar);
+            if ($jalan->gambar && Storage::disk('public')->exists($jalan->gambar)) {
+                Storage::disk('public')->delete($jalan->gambar);
             }
 
             $jalan->delete();

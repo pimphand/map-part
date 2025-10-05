@@ -193,11 +193,18 @@
                     placeholder="Masukkan nama titik" required>
             </div>
 
-            <div>
-                <label for="point-name" class="block text-sm font-medium text-gray-700 mb-2">Gambar:</label>
+            <div id="image-upload-field">
+                <label for="point-image" class="block text-sm font-medium text-gray-700 mb-2">Gambar:</label>
                 <input type="file" id="point-image" name="gambar"
                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Masukkan gambar titik" required>
+            </div>
+
+            <div id="cctv-url-field" class="hidden">
+                <label for="point-cctv-url" class="block text-sm font-medium text-gray-700 mb-2">URL CCTV:</label>
+                <input type="url" id="point-cctv-url" name="cctv_url"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Masukkan URL CCTV (contoh: rtsp://...)">
             </div>
 
             <div>
@@ -245,6 +252,31 @@
                     const drawPanel = document.getElementById('draw-panel');
                     if (drawPanel) {
                         drawPanel.classList.toggle('hidden');
+                    }
+                });
+            }
+
+            // Handle type change for CCTV URL vs Image upload
+            const typeSelect = document.getElementById('point-type');
+            const imageUploadField = document.getElementById('image-upload-field');
+            const cctvUrlField = document.getElementById('cctv-url-field');
+            const imageInput = document.getElementById('point-image');
+            const cctvUrlInput = document.getElementById('point-cctv-url');
+
+            if (typeSelect && imageUploadField && cctvUrlField) {
+                typeSelect.addEventListener('change', function () {
+                    if (this.value === 'cctv') {
+                        // Show URL field for CCTV
+                        imageUploadField.classList.add('hidden');
+                        cctvUrlField.classList.remove('hidden');
+                        imageInput.removeAttribute('required');
+                        cctvUrlInput.setAttribute('required', 'required');
+                    } else {
+                        // Show image upload for other types
+                        imageUploadField.classList.remove('hidden');
+                        cctvUrlField.classList.add('hidden');
+                        imageInput.setAttribute('required', 'required');
+                        cctvUrlInput.removeAttribute('required');
                     }
                 });
             }
