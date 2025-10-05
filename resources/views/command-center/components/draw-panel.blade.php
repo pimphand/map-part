@@ -71,6 +71,43 @@
                 </button>
             </div>
         </div>
+        <div>
+            <h3 class="text-sm font-semibold text-gray-500 mb-2 border-b pb-1">PBB</h3>
+            <div class="grid grid-cols-4 gap-2 text-center">
+                <!-- Rumah -->
+                <button id="draw-pbb-house"
+                    class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Gambar Rumah">
+                    <i class="fa-solid fa-house-chimney fa-2x text-blue-600"></i>
+                    <span class="text-xs mt-1 text-gray-700">Rumah</span>
+                </button>
+
+                <!-- Sawah -->
+                <button id="draw-pbb-field"
+                    class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Gambar Sawah">
+                    <i class="fa-solid fa-tractor fa-2x text-green-600"></i>
+                    <span class="text-xs mt-1 text-gray-700">Sawah</span>
+                </button>
+
+                <!-- Perkarangan -->
+                <button id="draw-pbb-yard"
+                    class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Gambar Perkarangan">
+                    <i class="fa-solid fa-tree fa-2x text-amber-600"></i>
+                    <span class="text-xs mt-1 text-gray-700">Perkarangan</span>
+                </button>
+
+                <!-- Lainnya -->
+                <button id="draw-pbb-other"
+                    class="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Gambar Lainnya">
+                    <i class="fa-solid fa-layer-group fa-2x text-gray-600"></i>
+                    <span class="text-xs mt-1 text-gray-700">Lainnya</span>
+                </button>
+            </div>
+        </div>
+
     </div>
     <div class="space-y-2">
         <button id="refresh-data-maps-button"

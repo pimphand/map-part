@@ -9,6 +9,22 @@
         <div id="modal-content" class="p-5 text-sm text-gray-700">
             <!-- Konten modal akan diisi oleh JavaScript -->
         </div>
+        <div id="modal-actions" class="flex justify-between px-5 pb-5 hidden">
+            <div class="flex space-x-2">
+                <button id="modal-edit-btn"
+                    class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition duration-300">
+                    <i class="fa-solid fa-edit mr-2"></i>Edit
+                </button>
+                <button id="modal-delete-btn"
+                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-300">
+                    <i class="fa-solid fa-trash mr-2"></i>Hapus
+                </button>
+            </div>
+            <button id="modal-close-btn"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300">
+                Tutup
+            </button>
+        </div>
     </div>
 </div>
 
@@ -96,7 +112,17 @@
                 <span class="font-medium text-gray-700">Keterangan:</span>
                 <p id="road-modal-keterangan" class="mt-1"></p>
             </div>
-            <div class="flex justify-end pt-4">
+            <div class="flex justify-between pt-4">
+                <div class="flex space-x-2">
+                    <button id="road-modal-edit-btn"
+                        class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition duration-300">
+                        <i class="fa-solid fa-edit mr-2"></i>Edit
+                    </button>
+                    <button id="road-modal-delete-btn"
+                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-300">
+                        <i class="fa-solid fa-trash mr-2"></i>Hapus
+                    </button>
+                </div>
                 <button id="road-modal-close-btn"
                     class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300">
                     Tutup

@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'rumah_tdk_layak': { icon: 'fa-solid fa-house-crack', color: 'var(--color-stone-500)' },
                         'lansia': { icon: 'fa-solid fa-person-cane', color: 'var(--color-sky-500)' },
                         'anak_yatim': { icon: 'fa-solid fa-hands-holding-child', color: 'var(--color-teal-500)' },
-                        'CCTV': { icon: 'fa-solid fa-video', color: '#4b5563' }
+                        'cctv': { icon: 'fa-solid fa-video', color: '#4b5563' }
                     };
 
                     // Buat marker berdasarkan data API
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             contentHtml += `<div class="flex border-b pb-1"><strong class="w-1/3 text-gray-500">Dibuat</strong><span class="w-2/3">${new Date(item.created_at).toLocaleDateString('id-ID')}</span></div>`;
                             contentHtml += '</div>';
 
-                            showModal(item.judul, contentHtml, item.gambar_url);
+                            showModal(item.judul, contentHtml, item.gambar_url, item);
                         });
 
                         // Tambahkan ke legenda jika belum ada
@@ -578,10 +578,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal functions
 
-    function showModal(title, content, imageUrl) {
+    function showModal(title, content, imageUrl, itemData = null) {
         const modal = document.getElementById('detail-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalContent = document.getElementById('modal-content');
+        const modalActions = document.getElementById('modal-actions');
 
         modalTitle.textContent = title;
         let fullContent = '';
@@ -590,6 +591,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         fullContent += content;
         modalContent.innerHTML = fullContent;
+
+        // Show/hide action buttons based on whether we have item data
+        if (itemData) {
+            modalActions.classList.remove('hidden');
+            modal.dataset.itemId = itemData.id;
+            modal.dataset.itemType = 'point'; // or 'road' depending on context
+        } else {
+            modalActions.classList.add('hidden');
+        }
+
         modal.classList.remove('hidden');
         setTimeout(() => {
             modal.querySelector('.modal-container').classList.remove('scale-95');
@@ -607,10 +618,287 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modal event listeners
     const modal = document.getElementById('detail-modal');
     const closeModalBtn = document.getElementById('modal-close');
+    const closeModalBtnFooter = document.getElementById('modal-close-btn');
+    const editBtn = document.getElementById('modal-edit-btn');
+    const deleteBtn = document.getElementById('modal-delete-btn');
 
     closeModalBtn.addEventListener('click', hideModal);
+    if (closeModalBtnFooter) {
+        closeModalBtnFooter.addEventListener('click', hideModal);
+    }
     modal.addEventListener('click', (e) => {
         if (e.target === modal) hideModal();
     });
+
+    // Edit and Delete button event listeners
+    if (editBtn) {
+        editBtn.addEventListener('click', () => {
+            const itemId = modal.dataset.itemId;
+            const itemType = modal.dataset.itemType;
+            if (itemId && itemType === 'point') {
+                showEditPointModal(itemId);
+            }
+        });
+    }
+
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+            const itemId = modal.dataset.itemId;
+            const itemType = modal.dataset.itemType;
+            if (itemId && itemType === 'point') {
+                const itemTitle = document.getElementById('modal-title').textContent;
+                confirmDeletePoint(itemId, itemTitle);
+            }
+        });
+    }
+
+    // Point edit and delete functions
+    async function showEditPointModal(pointId) {
+        try {
+            // Fetch point data
+            const response = await fetch(`/api/data-maps`);
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                const point = result.data.find(p => p.id == pointId);
+                if (point) {
+                    // Close current modal
+                    hideModal();
+
+                    // Create edit modal if it doesn't exist
+                    let editModal = document.getElementById('edit-point-modal');
+                    if (!editModal) {
+                        editModal = createEditPointModal();
+                    }
+
+                    // Populate form with current data
+                    document.getElementById('edit-point-name').value = point.judul || '';
+                    document.getElementById('edit-point-type').value = point.kategori || '';
+                    document.getElementById('edit-point-description').value = point.keterangan || '';
+                    document.getElementById('edit-point-status').value = point.status || 'active';
+                    document.getElementById('edit-point-latitude').value = point.lat || '';
+                    document.getElementById('edit-point-longitude').value = point.lng || '';
+
+                    // Store point ID for update
+                    editModal.dataset.pointId = point.id;
+
+                    // Show modal
+                    editModal.classList.remove('hidden');
+                    setTimeout(() => {
+                        editModal.querySelector('.modal-container').classList.remove('scale-95');
+                        editModal.querySelector('.modal-container').classList.add('scale-100');
+                    }, 10);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading point data:', error);
+            showNotification('Terjadi kesalahan saat memuat data titik', 'error');
+        }
+    }
+
+    function createEditPointModal() {
+        const modalHTML = `
+            <div id="edit-point-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70] hidden modal-overlay">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-md modal-container transform scale-95">
+                    <div class="flex justify-between items-center p-4 border-b">
+                        <h3 class="text-lg font-bold text-gray-800">Edit Data Titik</h3>
+                        <button id="edit-point-modal-close" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div>
+                            <label for="edit-point-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Titik</label>
+                            <input type="text" id="edit-point-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="edit-point-type" class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                            <select id="edit-point-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                <option value="">Pilih Kategori</option>
+                                <option value="pemerintahan">Pemerintahan</option>
+                                <option value="pendidikan">Pendidikan</option>
+                                <option value="kesehatan">Kesehatan</option>
+                                <option value="ibadah">Ibadah</option>
+                                <option value="wisata">Wisata</option>
+                                <option value="stunting">Stunting</option>
+                                <option value="rumah_tdk_layak">Rumah Tdk Layak</option>
+                                <option value="lansia">Lansia</option>
+                                <option value="anak_yatim">Anak Yatim</option>
+                                <option value="cctv">CCTV</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="edit-point-latitude" class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                                <input type="number" id="edit-point-latitude" step="any" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <div>
+                                <label for="edit-point-longitude" class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                                <input type="number" id="edit-point-longitude" step="any" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="edit-point-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select id="edit-point-status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="active">Aktif</option>
+                                <option value="inactive">Tidak Aktif</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="edit-point-description" class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                            <textarea id="edit-point-description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan deskripsi titik..."></textarea>
+                        </div>
+                        <div>
+                            <label for="edit-point-gambar" class="block text-sm font-medium text-gray-700 mb-1">Gambar Titik (Opsional)</label>
+                            <input type="file" id="edit-point-gambar" accept="image/*" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Format: JPG, PNG, GIF, WebP (Max: 10MB)</p>
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4">
+                            <button id="edit-point-cancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Batal</button>
+                            <button id="edit-point-save" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan Perubahan</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        attachEditPointModalListeners();
+        return document.getElementById('edit-point-modal');
+    }
+
+    function attachEditPointModalListeners() {
+        const modal = document.getElementById('edit-point-modal');
+        const closeBtn = document.getElementById('edit-point-modal-close');
+        const cancelBtn = document.getElementById('edit-point-cancel');
+        const saveBtn = document.getElementById('edit-point-save');
+
+        const closeModal = () => {
+            modal.querySelector('.modal-container').classList.remove('scale-100');
+            modal.querySelector('.modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        };
+
+        closeBtn.onclick = closeModal;
+        cancelBtn.onclick = closeModal;
+
+        // Close modal when clicking outside
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Save button functionality
+        saveBtn.onclick = () => saveEditedPoint();
+    }
+
+    async function saveEditedPoint() {
+        const modal = document.getElementById('edit-point-modal');
+        const pointId = modal.dataset.pointId;
+
+        if (!pointId) {
+            showNotification('ID titik tidak ditemukan!', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('name', document.getElementById('edit-point-name').value);
+        formData.append('type', document.getElementById('edit-point-type').value);
+        formData.append('latitude', document.getElementById('edit-point-latitude').value);
+        formData.append('longitude', document.getElementById('edit-point-longitude').value);
+        formData.append('description', document.getElementById('edit-point-description').value);
+        formData.append('status', document.getElementById('edit-point-status').value);
+
+        const imageFile = document.getElementById('edit-point-gambar').files[0];
+        if (imageFile) {
+            formData.append('gambar', imageFile);
+        }
+
+        try {
+            const response = await fetch(`/api/data-maps/${pointId}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showNotification(result.message, 'success');
+                closeEditPointModal();
+                // Reload the page to refresh the map data
+                window.location.reload();
+            } else {
+                showNotification(result.message || 'Terjadi kesalahan saat menyimpan data', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating point:', error);
+            showNotification('Terjadi kesalahan saat menyimpan data', 'error');
+        }
+    }
+
+    function closeEditPointModal() {
+        const modal = document.getElementById('edit-point-modal');
+        if (modal) {
+            modal.querySelector('.modal-container').classList.remove('scale-100');
+            modal.querySelector('.modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+    }
+
+    function confirmDeletePoint(pointId, pointName) {
+        if (confirm(`Apakah Anda yakin ingin menghapus titik "${pointName}"?\n\nTindakan ini tidak dapat dibatalkan.`)) {
+            deletePoint(pointId);
+        }
+    }
+
+    async function deletePoint(pointId) {
+        try {
+            const response = await fetch(`/api/data-maps/${pointId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showNotification(result.message, 'success');
+                hideModal();
+                // Reload the page to refresh the map data
+                window.location.reload();
+            } else {
+                showNotification(result.message || 'Terjadi kesalahan saat menghapus data', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting point:', error);
+            showNotification('Terjadi kesalahan saat menghapus data', 'error');
+        }
+    }
+
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-[80] px-6 py-3 rounded-lg shadow-lg text-white ${
+            type === 'success' ? 'bg-green-500' :
+            type === 'error' ? 'bg-red-500' :
+            'bg-blue-500'
+        }`;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
 
 });

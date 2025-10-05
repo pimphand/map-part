@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\CommandCenter\DataMap;
-use App\Models\Jalan;
+use App\Models\CommandCenter\Jalan;
 
 class CommandCenterController extends Controller
 {
@@ -529,6 +529,99 @@ class CommandCenterController extends Controller
     }
 
     /**
+     * Update data map
+     */
+    public function updateDataMap(Request $request, $id)
+    {
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'latitude' => 'required|numeric',
+                'longitude' => 'required|numeric',
+                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240', // 10MB max
+                'type' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'data' => 'nullable|array',
+                'status' => 'nullable|string|max:255'
+            ]);
+
+            $dataMap = DataMap::findOrFail($id);
+            $dataMap->judul = $validated['name'];
+            $dataMap->lat = $validated['latitude'];
+            $dataMap->lng = $validated['longitude'];
+            $dataMap->kategori = $validated['type'] ?? null;
+            $dataMap->keterangan = $validated['description'] ?? null;
+            $dataMap->data = $validated['data'] ?? [];
+            $dataMap->status = $validated['status'] ?? 'active';
+
+            // Handle image upload and convert to WebP
+            if ($request->hasFile('gambar')) {
+                // Delete old image if exists
+                if ($dataMap->gambar && \Storage::disk('public')->exists($dataMap->gambar)) {
+                    \Storage::disk('public')->delete($dataMap->gambar);
+                }
+
+                $imagePath = $dataMap->uploadImage($request->file('gambar'));
+                $dataMap->gambar = $imagePath;
+            }
+
+            $dataMap->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data peta berhasil diperbarui!',
+                'data' => [
+                    'id' => $dataMap->id,
+                    'judul' => $dataMap->judul,
+                    'gambar_url' => $dataMap->image_url,
+                    'lat' => $dataMap->lat,
+                    'lng' => $dataMap->lng,
+                    'kategori' => $dataMap->kategori
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete data map
+     */
+    public function deleteDataMap(Request $request, $id)
+    {
+        try {
+            $dataMap = DataMap::findOrFail($id);
+
+            // Delete image if exists
+            if ($dataMap->gambar && \Storage::disk('public')->exists($dataMap->gambar)) {
+                \Storage::disk('public')->delete($dataMap->gambar);
+            }
+
+            $dataMap->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data peta berhasil dihapus!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Save road data to database
      */
     public function saveRoadData(Request $request)
@@ -670,12 +763,81 @@ class CommandCenterController extends Controller
     }
 
     /**
+     * Update road data
+     */
+    public function updateRoadData(Request $request, $id)
+    {
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'nama' => 'required|string|max:255',
+                'type' => 'required|string|in:Bagus,Rusak,Gang',
+                'keterangan' => 'nullable|string',
+                'status' => 'nullable|string|max:255',
+                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240', // 10MB max
+                'kategori' => 'nullable|string|max:255'
+            ]);
+
+            $jalan = Jalan::findOrFail($id);
+            $jalan->nama = $validated['nama'];
+            $jalan->type = $validated['type'];
+            $jalan->keterangan = $validated['keterangan'] ?? null;
+            $jalan->status = $validated['status'] ?? 'active';
+            $jalan->kategori = $validated['kategori'] ?? null;
+
+            // Handle image upload
+            if ($request->hasFile('gambar')) {
+                // Delete old image if exists
+                if ($jalan->gambar && \Storage::disk('public')->exists($jalan->gambar)) {
+                    \Storage::disk('public')->delete($jalan->gambar);
+                }
+
+                $image = $request->file('gambar');
+                $imageName = time() . '_' . $image->getClientOriginalName();
+                $imagePath = $image->storeAs('jalans', $imageName, 'public');
+                $jalan->gambar = $imagePath;
+            }
+
+            $jalan->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data jalan berhasil diperbarui!',
+                'data' => [
+                    'id' => $jalan->id,
+                    'nama' => $jalan->nama,
+                    'type' => $jalan->type,
+                    'formatted_type' => $jalan->formatted_type,
+                    'gambar_url' => $jalan->image_url
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Delete road data
      */
     public function deleteRoadData(Request $request, $id)
     {
         try {
             $jalan = Jalan::findOrFail($id);
+
+            // Delete image if exists
+            if ($jalan->gambar && \Storage::disk('public')->exists($jalan->gambar)) {
+                \Storage::disk('public')->delete($jalan->gambar);
+            }
+
             $jalan->delete();
 
             return response()->json([

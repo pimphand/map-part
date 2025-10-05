@@ -63,12 +63,6 @@
                 { name: "Lansia Ibu T.", category: "Lansia", lat: -8.5360, lng: 116.1335, icon: "fa-solid fa-person-cane", color: "sky", details: { "Nama": "Ibu T.", "Usia": "78 tahun", "Kondisi": "Membutuhkan pemeriksaan kesehatan rutin." }, imageUrl: "https://placehold.co/400x250/38BDF8/FFFFFF?text=Foto+Lansia" },
                 { name: "Anak Yatim R.", category: "Anak Yatim", lat: -8.5350, lng: 116.1345, icon: "fa-solid fa-hands-holding-child", color: "teal", details: { "Inisial": "R.S.", "Usia": "10 tahun", "Status": "Yatim Piatu", "Bantuan": "Menerima santunan rutin." }, imageUrl: "https://placehold.co/400x250/2DD4BF/FFFFFF?text=Foto+Anak+Yatim" }
             ],
-            cctvLocations: [
-                { name: "Gerbang Selamat Datang", lat: -8.5445, lng: 116.132, streamUrl: "https://placehold.co/800x450/000000/FFFFFF?text=CCTV+1+-+Gerbang+Desa" },
-                { name: "Pertigaan Utama", lat: -8.5361, lng: 116.1312, streamUrl: "https://placehold.co/800x450/000000/FFFFFF?text=CCTV+2+-+Pertigaan" },
-                { name: "Area Kantor Desa", lat: -8.5369, lng: 116.1325, streamUrl: "https://placehold.co/800x450/000000/FFFFFF?text=CCTV+3+-+Kantor+Desa" },
-                { name: "Area Wisata Air Terjun", lat: -8.5305, lng: 116.1381, streamUrl: "https://placehold.co/800x450/000000/FFFFFF?text=CCTV+4+-+Air+Terjun" }
-            ],
             foodPriceData: {
                 staples: [
                     { name: "Beras Medium", price: 14500, unit: "kg" },

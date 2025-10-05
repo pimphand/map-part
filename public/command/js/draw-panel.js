@@ -1081,6 +1081,257 @@ window.drawPanelManager = {
                 closeModal();
             }
         });
+
+        // Add event listeners for edit and delete buttons
+        const editBtn = document.getElementById('road-modal-edit-btn');
+        const deleteBtn = document.getElementById('road-modal-delete-btn');
+
+        if (editBtn) {
+            editBtn.onclick = () => this.showEditRoadModal(road);
+        }
+
+        if (deleteBtn) {
+            deleteBtn.onclick = () => this.confirmDeleteRoad(road.id, road.nama);
+        }
+    },
+
+    // Show edit road modal
+    showEditRoadModal: function(road) {
+        // Close current modal first
+        const roadModal = document.getElementById('road-detail-modal');
+        if (roadModal) {
+            roadModal.classList.add('hidden');
+        }
+
+        // Create edit modal if it doesn't exist
+        let editModal = document.getElementById('edit-road-modal');
+        if (!editModal) {
+            editModal = this.createEditRoadModal();
+        }
+
+        // Populate form with current data
+        document.getElementById('edit-road-nama').value = road.nama || '';
+        document.getElementById('edit-road-type').value = road.type || 'Bagus';
+        document.getElementById('edit-road-keterangan').value = road.keterangan || '';
+        document.getElementById('edit-road-status').value = road.status || 'active';
+        document.getElementById('edit-road-kategori').value = road.kategori || '';
+
+        // Store road ID for update
+        editModal.dataset.roadId = road.id;
+
+        // Show modal
+        editModal.classList.remove('hidden');
+        setTimeout(() => {
+            editModal.querySelector('.modal-container').classList.remove('scale-95');
+            editModal.querySelector('.modal-container').classList.add('scale-100');
+        }, 10);
+    },
+
+    // Create edit road modal
+    createEditRoadModal: function() {
+        const modalHTML = `
+            <div id="edit-road-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70] hidden modal-overlay">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-md modal-container transform scale-95">
+                    <div class="flex justify-between items-center p-4 border-b">
+                        <h3 class="text-lg font-bold text-gray-800">Edit Data Jalan</h3>
+                        <button id="edit-road-modal-close" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div>
+                            <label for="edit-road-nama" class="block text-sm font-medium text-gray-700 mb-1">Nama Jalan</label>
+                            <input type="text" id="edit-road-nama" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="edit-road-type" class="block text-sm font-medium text-gray-700 mb-1">Kondisi Jalan</label>
+                            <select id="edit-road-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                <option value="Bagus">Bagus</option>
+                                <option value="Rusak">Rusak</option>
+                                <option value="Gang">Gang</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="edit-road-kategori" class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                            <input type="text" id="edit-road-kategori" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="edit-road-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select id="edit-road-status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="active">Aktif</option>
+                                <option value="inactive">Tidak Aktif</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="edit-road-keterangan" class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                            <textarea id="edit-road-keterangan" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan keterangan jalan..."></textarea>
+                        </div>
+                        <div>
+                            <label for="edit-road-gambar" class="block text-sm font-medium text-gray-700 mb-1">Gambar Jalan (Opsional)</label>
+                            <input type="file" id="edit-road-gambar" accept="image/*" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Format: JPG, PNG, GIF, WebP (Max: 10MB)</p>
+                        </div>
+                        <div class="flex justify-end space-x-2 pt-4">
+                            <button id="edit-road-cancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Batal</button>
+                            <button id="edit-road-save" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan Perubahan</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        this.attachEditRoadModalListeners();
+        return document.getElementById('edit-road-modal');
+    },
+
+    // Attach edit road modal event listeners
+    attachEditRoadModalListeners: function() {
+        const modal = document.getElementById('edit-road-modal');
+        const closeBtn = document.getElementById('edit-road-modal-close');
+        const cancelBtn = document.getElementById('edit-road-cancel');
+        const saveBtn = document.getElementById('edit-road-save');
+
+        const closeModal = () => {
+            modal.querySelector('.modal-container').classList.remove('scale-100');
+            modal.querySelector('.modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        };
+
+        closeBtn.onclick = closeModal;
+        cancelBtn.onclick = closeModal;
+
+        // Close modal when clicking outside
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Save button functionality
+        saveBtn.onclick = () => this.saveEditedRoad();
+    },
+
+    // Save edited road data
+    saveEditedRoad: async function() {
+        const modal = document.getElementById('edit-road-modal');
+        const roadId = modal.dataset.roadId;
+
+        if (!roadId) {
+            this.showNotification('ID jalan tidak ditemukan!', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('nama', document.getElementById('edit-road-nama').value);
+        formData.append('type', document.getElementById('edit-road-type').value);
+        formData.append('keterangan', document.getElementById('edit-road-keterangan').value);
+        formData.append('status', document.getElementById('edit-road-status').value);
+        formData.append('kategori', document.getElementById('edit-road-kategori').value);
+
+        const imageFile = document.getElementById('edit-road-gambar').files[0];
+        if (imageFile) {
+            formData.append('gambar', imageFile);
+        }
+
+        try {
+            const response = await fetch(`/api/jalans/${roadId}`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showNotification(result.message, 'success');
+                this.closeEditRoadModal();
+                this.loadExistingRoadData(); // Reload road data
+            } else {
+                this.showNotification(result.message || 'Terjadi kesalahan saat menyimpan data', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating road:', error);
+            this.showNotification('Terjadi kesalahan saat menyimpan data', 'error');
+        }
+    },
+
+    // Close edit road modal
+    closeEditRoadModal: function() {
+        const modal = document.getElementById('edit-road-modal');
+        if (modal) {
+            modal.querySelector('.modal-container').classList.remove('scale-100');
+            modal.querySelector('.modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+    },
+
+    // Confirm delete road
+    confirmDeleteRoad: function(roadId, roadName) {
+        if (confirm(`Apakah Anda yakin ingin menghapus jalan "${roadName}"?\n\nTindakan ini tidak dapat dibatalkan.`)) {
+            this.deleteRoad(roadId);
+        }
+    },
+
+    // Delete road
+    deleteRoad: async function(roadId) {
+        try {
+            const response = await fetch(`/api/jalans/${roadId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showNotification(result.message, 'success');
+                this.closeRoadModal();
+                this.loadExistingRoadData(); // Reload road data
+            } else {
+                this.showNotification(result.message || 'Terjadi kesalahan saat menghapus data', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting road:', error);
+            this.showNotification('Terjadi kesalahan saat menghapus data', 'error');
+        }
+    },
+
+    // Close road modal
+    closeRoadModal: function() {
+        const modal = document.getElementById('road-detail-modal');
+        if (modal) {
+            modal.querySelector('.modal-container').classList.remove('scale-100');
+            modal.querySelector('.modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+    },
+
+    // Show notification
+    showNotification: function(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-[80] px-6 py-3 rounded-lg shadow-lg text-white ${
+            type === 'success' ? 'bg-green-500' :
+            type === 'error' ? 'bg-red-500' :
+            'bg-blue-500'
+        }`;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
 };
 
