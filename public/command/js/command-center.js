@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
 
-        let originalBoundary = L.geoJSON(villageData.boundary, { style: f => f.properties.style }).bindPopup("<h3>Batas Wilayah Desa Jeringo</h3> <button id='add-pointer-popup-btn' class='bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded shadow-lg text-xs' title='Add Pointer'><i class='fa-solid fa-plus mr-1'></i> Add Pointer</button>").addTo(map);
+        let originalBoundary = L.geoJSON(villageData.boundary, { style: f => f.properties.style }).bindPopup("<h3>Batas Wilayah Desa Jeringo</h3> <button id='add-pointer-popup-btn' class='bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded shadow-lg text-xs' title='Tambah Titik'><i class='fa-solid fa-plus mr-1'></i> Tambah Titik</button>").addTo(map);
 
         // Add click handler to original boundary polygon to capture coordinates
         originalBoundary.on('click', (e) => {
@@ -49,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target.closest('#add-pointer-btn') || e.target.closest('#add-pointer-popup-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Add Pointer button clicked');
                 // Langsung buka modal tanpa mode klik peta
                 showPointModal();
             }
@@ -89,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Close any open popups
             map.closePopup();
 
-            console.log('Add pointer mode enabled. Click on the map to place a point.');
         }
 
 
@@ -178,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.getElementById('add-pointer-btn');
             if (button) {
                 button.style.background = '#3b82f6';
-                button.innerHTML = '<i class="fa-solid fa-plus" style="margin-right: 5px;"></i> Add Pointer';
+                button.innerHTML = '<i class="fa-solid fa-plus" style="margin-right: 5px;"></i> Tambah Titik';
             }
             addPointerMode = false;
             tempCoordinates = null;
